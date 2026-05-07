@@ -1,0 +1,7 @@
+# One explicitly approved repo path per line.
+# Scheduled workers must use a path listed here.
+# Do not add broad folders such as C:\Users\...\GitHub.
+# Example:
+# C:\path\to\my\web-app
+C:\ai-agent-tools\test-repos\web-agent-test
+H:\Github\M4rketView

@@ -1,0 +1,7 @@
+{
+  "defaultModel": "ollama/qwen2.5-coder:14b",
+  "defaultBaseBranch": "main",
+  "defaultIntervalHours": 2,
+  "safetyMode": true,
+  "advancedMode": false
+}

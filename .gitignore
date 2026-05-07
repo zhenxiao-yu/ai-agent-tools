@@ -1,0 +1,47 @@
+# Logs
+logs/
+*.log
+*.pid
+
+# VS Code
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+terminal-backups/
+*.bak
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test repos
+test-repos/
+
+# Reports (generated)
+reports/
+
+# Locks
+locks/

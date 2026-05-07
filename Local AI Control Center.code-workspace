@@ -1,0 +1,46 @@
+{
+  "folders": [
+    {
+      "name": "AI Agent Tools",
+      "path": "."
+    },
+    {
+      "name": "Dashboard",
+      "path": "dashboard"
+    },
+    {
+      "name": "Scripts",
+      "path": "scripts"
+    },
+    {
+      "name": "Configs",
+      "path": "configs"
+    }
+  ],
+  "settings": {
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "files.exclude": {
+      "**/.venv": true,
+      "**/__pycache__": true,
+      "free-claude-code/.venv": true
+    },
+    "search.exclude": {
+      "**/.venv": true,
+      "**/node_modules": true,
+      "**/.git": true,
+      "logs/**": true
+    },
+    "powershell.integratedConsole.showOnStartup": false,
+    "editor.formatOnSave": false,
+    "files.trimTrailingWhitespace": true
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-vscode.powershell",
+      "saoudrizwan.claude-dev",
+      "anthropic.claude-code",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode"
+    ]
+  }
+}

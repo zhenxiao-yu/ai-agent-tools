@@ -1,0 +1,66 @@
+{
+  "free_local": {
+    "role": "default free local coding",
+    "provider": "ollama",
+    "model": "qwen2.5-coder:14b",
+    "baseUrl": "http://localhost:11434",
+    "apiKeyEnvVar": null,
+    "paid": false
+  },
+  "deepseek_worker": {
+    "role": "cheap paid coding worker",
+    "provider": "deepseek",
+    "model": "deepseek-chat",
+    "baseUrl": "https://api.deepseek.com",
+    "apiKeyEnvVar": "DEEPSEEK_API_KEY",
+    "paid": true
+  },
+  "qwen_worker": {
+    "role": "China-friendly coding/planning",
+    "provider": "qwen",
+    "model": "qwen-plus",
+    "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "apiKeyEnvVar": "QWEN_API_KEY",
+    "paid": true
+  },
+  "kimi_planner": {
+    "role": "long-context repo planning",
+    "provider": "kimi",
+    "model": "kimi-k2-0905-preview",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "apiKeyEnvVar": "KIMI_API_KEY",
+    "paid": true
+  },
+  "siliconflow_gateway": {
+    "role": "multi-model gateway",
+    "provider": "siliconflow",
+    "model": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+    "baseUrl": "https://api.siliconflow.cn/v1",
+    "apiKeyEnvVar": "SILICONFLOW_API_KEY",
+    "paid": true
+  },
+  "openrouter_gateway": {
+    "role": "global multi-model gateway",
+    "provider": "openrouter",
+    "model": "deepseek/deepseek-chat",
+    "baseUrl": "https://openrouter.ai/api/v1",
+    "apiKeyEnvVar": "OPENROUTER_API_KEY",
+    "paid": true
+  },
+  "zai_reviewer": {
+    "role": "GLM review/planning, endpoint varies by account/plan",
+    "provider": "zai",
+    "model": "glm-4.6",
+    "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+    "apiKeyEnvVar": "ZAI_API_KEY",
+    "paid": true
+  },
+  "fallback": {
+    "role": "fallback when paid keys are missing",
+    "provider": "ollama",
+    "model": "qwen2.5-coder:14b",
+    "baseUrl": "http://localhost:11434",
+    "apiKeyEnvVar": null,
+    "paid": false
+  }
+}
