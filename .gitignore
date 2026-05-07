@@ -1,10 +1,7 @@
-# Logs
-logs/
-*.log
-*.pid
-
-# VS Code
-.vscode/
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
 
 # Python
 __pycache__/
@@ -16,34 +13,54 @@ __pycache__/
 venv/
 ENV/
 env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
+# Build, test, and runtime output
+coverage/
 playwright-report/
 test-results/
+logs/
+*.log
+*.pid
+reports/
+locks/
 
-# Environment files
+# Local environment and secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
 
-# Backup files
+# Backups and scratch output
 terminal-backups/
 *.bak
 *.backup
+scratch/
+transcripts/
+chat-exports/
+session-logs/
 
-# OS files
+# Editor and OS noise
+.vscode/
+.idea/
+*.code-workspace
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Test repos
+# Local AI / agent state
+.codex/
+.claude/
+.cursor/
+.windsurf/
+.continue/
+.aider*
+
+# Repo-specific generated folders
 test-repos/
-
-# Reports (generated)
-reports/
-
-# Locks
-locks/
