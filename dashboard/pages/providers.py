@@ -54,8 +54,6 @@ def render():
 
         # Card container
         with st.container():
-            st.markdown('<div class="key-input-group">', unsafe_allow_html=True)
-
             # Header with status
             provider_card_header(provider, model, role, has_key)
 
@@ -104,8 +102,7 @@ def render():
                             timeout=180
                         )
                         action_result(f"Test {provider}", code, out)
-
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown("---")
 
     # Reference
     with st.expander("Provider Configuration"):

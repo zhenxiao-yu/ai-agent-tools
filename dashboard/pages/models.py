@@ -15,7 +15,7 @@ from dashboard.services import (
     get_service_status,
     get_service_status_snapshot,
 )
-from dashboard.ui.components import action_result, card_grid, chip, info_panel, section_header
+from dashboard.ui.components import action_result, card_grid, chip, info_panel, section_header, status_rows
 from dashboard.utils import run_ps
 
 
@@ -41,17 +41,22 @@ def render():
     st.markdown("### System Status")
     has_default = "qwen2.5-coder:14b" in status.get("models", "")
     gpu_active = "GPU" in status.get("ps", "")
+    status_rows([
+        ("Runtime", "Online" if status["ollama"] else "Offline", "ready" if status["ollama"] else "danger"),
+        ("Default Model", "Ready" if has_default else "Needs Setup", "ready" if has_default else "warn"),
+        ("Compute", "Active" if gpu_active else "Unknown", "ready" if gpu_active else "info"),
+    ])
     card_grid([
         {
             "title": "Ollama",
             "value": "Online" if status["ollama"] else "Offline",
-            "detail": "Local server",
+            "detail": "Local runtime",
             "tone": "ready" if status["ollama"] else "danger",
         },
         {
             "title": "Default Model",
-            "value": "Available" if has_default else "Missing",
-            "detail": "qwen2.5-coder:14b",
+            "value": "Available" if has_default else "Needs Setup",
+            "detail": "Default local coding model",
             "tone": "ready" if has_default else "warn",
         },
         {
@@ -64,7 +69,7 @@ def render():
 
     info_panel(
         "Automatic Routing",
-        f"With auto routing {'enabled' if settings.get('autoRouting', True) else 'disabled'}, the dashboard currently recommends `{routing_preview['chosen_model']}` for deeper planning or multi-project work.",
+        f"With auto routing {'enabled' if settings.get('autoRouting', True) else 'disabled'}, the dashboard currently recommends {routing_preview['chosen_model']} for deeper planning or multi-project work.",
         "info",
     )
     st.caption(describe_service_status_snapshot(status))
@@ -110,7 +115,8 @@ def render():
 
             with cols[0]:
                 provider = profile.get("provider", "unknown").title()
-                st.markdown(f"**{provider}** - `{profile.get('model')}`")
+                st.markdown(f"**{provider}**")
+                st.caption(profile.get("model", "unknown"))
                 st.caption(f"_{profile.get('role', '')}_")
 
             with cols[1]:
@@ -118,7 +124,7 @@ def render():
 
             with cols[2]:
                 if is_selected:
-                    st.button("✓ Selected", disabled=True, key=f"sel_{profile_name}")
+                    st.button("Selected", disabled=True, key=f"sel_{profile_name}")
                 else:
                     if st.button("Select", key=f"sel_{profile_name}"):
                         new_settings = settings.copy()
@@ -130,12 +136,14 @@ def render():
         st.divider()
 
     # Model info
-    st.markdown("### Installed Models")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.code(status.get("models", "No models"), language="text")
-    with col2:
-        st.code(status.get("ps", "No running models"), language="text")
+    with st.expander("Advanced Runtime Output"):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption("Installed models")
+            st.code(status.get("models", "No models"), language="text")
+        with col2:
+            st.caption("Running models")
+            st.code(status.get("ps", "No running models"), language="text")
 
     # Actions
     st.markdown("### Actions")

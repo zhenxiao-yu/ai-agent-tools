@@ -155,6 +155,53 @@ def render_styles():
             color: var(--text-secondary);
         }
 
+        .status-table {
+            display: grid;
+            gap: 0.55rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            min-height: 34px;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(160, 172, 185, 0.12);
+        }
+
+        .status-row:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .status-name {
+            color: var(--text);
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+
+        .status-pill {
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            background: var(--panel);
+            font-size: 0.76rem;
+            font-weight: 700;
+            line-height: 1.25;
+            padding: 0.36rem 0.5rem;
+            max-width: 60%;
+            text-align: right;
+            white-space: normal;
+        }
+
+        .status-ready { color: #ccefd1; border-color: rgba(104, 179, 107, 0.4); }
+        .status-warn { color: #ead9ad; border-color: rgba(200, 164, 79, 0.4); }
+        .status-danger { color: #f1c0c0; border-color: rgba(212, 106, 106, 0.4); }
+        .status-info { color: #c9d9ff; border-color: rgba(115, 168, 255, 0.4); }
+        .status-muted { color: var(--muted); border-color: var(--line); }
+
         .top-nav-wrap {
             background: var(--panel);
             border: 1px solid var(--line);

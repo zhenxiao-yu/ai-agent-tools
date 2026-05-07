@@ -18,7 +18,7 @@ from dashboard.services import (
     get_service_status,
     get_service_status_snapshot,
 )
-from dashboard.ui.components import card_grid, info_panel, quick_action, section_header
+from dashboard.ui.components import card_grid, info_panel, quick_action, section_header, status_rows
 from dashboard.utils import latest_files, file_preview, today_count, recent_dashboard_events
 
 
@@ -52,7 +52,6 @@ def render():
     # Service Status
     status = get_service_status_snapshot(include_model_details=False)
     ensure_service_status_snapshot_fresh(include_model_details=False)
-    st.caption(describe_service_status_snapshot(status))
     repos = read_allowlist()
     plan = recommend_execution_plan("quick_fix", max(1, min(len(repos), 3)), status, allow_paid=False)
 
@@ -73,26 +72,28 @@ def render():
         warnings.append(f"{len(status['errors'])} background checks degraded; open diagnostics below.")
 
     if warnings:
-        st.markdown('<div class="diagnostic-panel"><strong>Attention Needed</strong><ul class="status-list">', unsafe_allow_html=True)
-        for item in warnings:
-            st.markdown(f"<li>{item}</li>", unsafe_allow_html=True)
-        st.markdown("</ul></div>", unsafe_allow_html=True)
+        st.warning("Attention Needed\n\n- " + "\n- ".join(warnings))
 
     # Status Cards - Row 1
     st.markdown("### Service Status")
     has_model = "qwen2.5-coder:14b" in status.get("models", "")
     gpu = "GPU" in status.get("ps", "")
+    status_rows([
+        ("Freshness", describe_service_status_snapshot(status), "info" if status.get("snapshot_ready") else "muted"),
+        ("Local Runtime", "Ready" if status.get("snapshot_ready") and status["ollama"] else "Checking" if not status.get("snapshot_ready") else "Offline", "ready" if status.get("snapshot_ready") and status["ollama"] else "info" if not status.get("snapshot_ready") else "danger"),
+        ("Repository Setup", f"{len(repos)} configured", "ready" if repos else "warn"),
+    ])
     card_grid([
         {
             "title": "Local AI",
             "value": "Ready" if status.get("snapshot_ready") and status["ollama"] else "Checking" if not status.get("snapshot_ready") else "Offline",
-            "detail": "Ollama API" if status.get("snapshot_ready") else "Background snapshot warming up",
+            "detail": "Local runtime is reachable" if status.get("snapshot_ready") and status["ollama"] else "Refreshing machine status" if not status.get("snapshot_ready") else "Start the local stack to run agents",
             "tone": "ready" if status.get("snapshot_ready") and status["ollama"] else "info" if not status.get("snapshot_ready") else "danger",
         },
         {
             "title": "Default Model",
-            "value": "Pending" if not status.get("snapshot_ready") else "Check Models" if status["ollama"] and not status.get("models") else "Available" if has_model else "Missing",
-            "detail": "Waiting for runtime snapshot" if not status.get("snapshot_ready") else "Deferred for faster load" if status["ollama"] and not status.get("models") else "qwen2.5-coder:14b",
+            "value": "Pending" if not status.get("snapshot_ready") else "Review Models" if status["ollama"] and not status.get("models") else "Available" if has_model else "Needs Setup",
+            "detail": "Waiting for runtime snapshot" if not status.get("snapshot_ready") else "Runtime details load on the Models page" if status["ollama"] and not status.get("models") else "Default local coding model",
             "tone": "info" if not status.get("snapshot_ready") or (status["ollama"] and not status.get("models")) else "ready" if has_model else "warn",
         },
         {
@@ -104,24 +105,24 @@ def render():
         {
             "title": "Proxy",
             "value": "Checking" if not status.get("snapshot_ready") else "Online" if status["proxy"] else "Offline",
-            "detail": "Background snapshot warming up" if not status.get("snapshot_ready") else "free-claude-code",
+            "detail": "Background snapshot warming up" if not status.get("snapshot_ready") else "Local compatibility endpoint",
             "tone": "info" if not status.get("snapshot_ready") else "ready" if status["proxy"] else "warn",
         },
     ])
 
     # Status Cards - Row 2
     card_grid([
-        {"title": "Dashboard", "value": "Online", "detail": "http://localhost:8501", "tone": "ready"},
+        {"title": "Dashboard", "value": "Online", "detail": "Control center is running", "tone": "ready"},
         {
             "title": "GitHub",
             "value": "Checking" if not status.get("snapshot_ready") else "Connected" if status["github"] else "Not Connected",
-            "detail": "Background snapshot warming up" if not status.get("snapshot_ready") else "CLI auth",
+            "detail": "Background snapshot warming up" if not status.get("snapshot_ready") else "Repository operations available" if status["github"] else "Sign in to enable repository operations",
             "tone": "info" if not status.get("snapshot_ready") else "ready" if status["github"] else "warn",
         },
         {
             "title": "Scheduler",
             "value": "Checking" if not status.get("snapshot_ready") else "Enabled" if status["scheduled"] else "Disabled",
-            "detail": "Background snapshot warming up" if not status.get("snapshot_ready") else "Local only",
+            "detail": "Background snapshot warming up" if not status.get("snapshot_ready") else "Local recurring checks" if status["scheduled"] else "Manual runs only",
             "tone": "info" if not status.get("snapshot_ready") else "warn" if status["scheduled"] else "muted",
         },
         {"title": "Projects", "value": str(len(repos)), "detail": "Repositories", "tone": "info"},
@@ -132,7 +133,7 @@ def render():
     with cols[0]:
         info_panel("1. Pick a Lane", "Home stays fast. Use Automation to preview routing and Models only when you need deeper runtime details.", "info")
     with cols[1]:
-        info_panel("2. Let It Queue", f"Recommended default route is `{plan['chosen_model']}` with {plan['lane_mode'].lower()}.", "ready")
+        info_panel("2. Let It Queue", f"Recommended route uses {plan['chosen_model']} with {plan['lane_mode'].lower()}.", "ready")
     with cols[2]:
         info_panel("3. Review Outputs", "Workers should surface logs, validation, and reports as results of a run, not hidden side effects.", "ready")
 

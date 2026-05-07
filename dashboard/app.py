@@ -13,7 +13,6 @@ if str(REPO_ROOT) not in sys.path:
 import streamlit as st
 
 from dashboard.data.settings import load_settings
-from dashboard.data.routing import recommend_execution_plan
 from dashboard.services import (
     describe_service_status_snapshot,
     ensure_service_status_snapshot_fresh,
@@ -21,7 +20,7 @@ from dashboard.services import (
     get_service_status_snapshot,
 )
 from dashboard.ui.styles import render_styles
-from dashboard.ui.components import error_boundary, info_panel
+from dashboard.ui.components import error_boundary, info_panel, status_rows
 from dashboard.utils import log_event
 
 # Import page modules
@@ -36,13 +35,6 @@ PAGES = {
     "Models": models,
     "Settings": settings,
 }
-
-
-def navigate_to(page: str) -> None:
-    """Synchronize widget state and current page selection."""
-    if page in PAGES:
-        st.session_state["current_page"] = page
-        st.session_state["nav_page"] = page
 
 
 def render_navigation() -> str:
@@ -69,36 +61,27 @@ def render_navigation() -> str:
 def render_sidebar():
     """Render contextual dock rather than primary navigation."""
     with st.sidebar:
-        st.markdown('<div class="dock-panel"><div class="dock-title">Control Dock</div>', unsafe_allow_html=True)
+        st.markdown('<div class="dock-title">Control Dock</div>', unsafe_allow_html=True)
 
         # Quick status
         status = get_service_status_snapshot()
         ensure_service_status_snapshot_fresh()
-        plan = recommend_execution_plan(
-            task_key="parallel_projects",
-            active_projects=2,
-            status=status,
-            allow_paid=bool(load_settings().get("autoRouting", True)),
-        )
 
         if status.get("snapshot_ready"):
             status_items = [
-                ("Online" if status["ollama"] else "Offline", "Ollama"),
-                ("Online" if status["proxy"] else "Offline", "Proxy"),
-                ("Connected" if status["github"] else "Limited", "GitHub"),
+                ("Ollama", "Online" if status["ollama"] else "Offline", "ready" if status["ollama"] else "danger"),
+                ("Proxy", "Online" if status["proxy"] else "Offline", "ready" if status["proxy"] else "warn"),
+                ("GitHub", "Connected" if status["github"] else "Limited", "ready" if status["github"] else "warn"),
             ]
-
-            for status_text, name in status_items:
-                st.markdown(f"**{name}**")
-                st.caption(status_text)
+            status_rows(status_items)
 
             if status.get("errors"):
                 st.caption(f"{len(status['errors'])} background checks degraded")
         else:
-            st.markdown("**Machine Status**")
-            st.caption("Warming up")
-            st.markdown("**Routing Signals**")
-            st.caption("Loading snapshot")
+            status_rows([
+                ("Machine Status", "Warming Up", "info"),
+                ("Routing Signals", "Loading", "muted"),
+            ])
 
         st.caption(describe_service_status_snapshot(status))
         st.caption("Instant navigation uses saved status, not live probes.")
@@ -106,8 +89,6 @@ def render_sidebar():
         if st.button("Refresh Status", use_container_width=True):
             get_service_status(force_refresh=True)
             st.rerun()
-
-        st.markdown("</div>", unsafe_allow_html=True)
 
         # Safety mode indicator
         settings_data = load_settings()
@@ -120,21 +101,12 @@ def render_sidebar():
 
         # Current model
         current_model = settings_data.get("defaultModel", "ollama/qwen2.5-coder:14b")
+        model_label = current_model.split("/", 1)[-1]
         info_panel(
             "Current Model",
-            f"Default: {current_model}\n\nAuto route suggests {plan['chosen_model']} when work fans out.",
+            f"Default local model: {model_label}\n\nAutomation routing is {'enabled' if settings_data.get('autoRouting', True) else 'manual'}.",
             "info",
         )
-
-        st.markdown('<div class="dock-panel"><div class="dock-title">Shortcuts</div>', unsafe_allow_html=True)
-        shortcut_cols = st.columns(2)
-        with shortcut_cols[0]:
-            st.button("Automation", use_container_width=True, on_click=navigate_to, args=("Automation",))
-            st.button("Providers", use_container_width=True, on_click=navigate_to, args=("Providers",))
-        with shortcut_cols[1]:
-            st.button("Models", use_container_width=True, on_click=navigate_to, args=("Models",))
-            st.button("Settings", use_container_width=True, on_click=navigate_to, args=("Settings",))
-        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_header():

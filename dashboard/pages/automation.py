@@ -102,10 +102,7 @@ def render():
         "Paid routing is best used as a planner or reviewer lane while local models keep implementation cheap.",
         "Logs, reports, and validation should be shown as outputs of a lane, not hidden in disconnected pages.",
     ]
-    st.markdown('<div class="diagnostic-panel"><ul class="status-list">', unsafe_allow_html=True)
-    for line in experience_lines:
-        st.markdown(f"<li>{line}</li>", unsafe_allow_html=True)
-    st.markdown("</ul></div>", unsafe_allow_html=True)
+    st.info("- " + "\n- ".join(experience_lines))
 
     st.markdown("### Automation Defaults")
     auto_routing = st.toggle(

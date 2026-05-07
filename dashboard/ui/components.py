@@ -31,22 +31,44 @@ def card_html(title: str, value: str, detail: str = "", tone: str = "info", icon
 
 def card(title: str, value: str, detail: str = "", tone: str = "info", icon: str = "") -> None:
     """Render a stat card with uniform height."""
-    st.markdown(card_html(title, value, detail, tone, icon), unsafe_allow_html=True)
+    with st.container(border=True):
+        if icon:
+            st.caption(f"{icon} {title}")
+        else:
+            st.caption(title)
+        st.subheader(value)
+        if detail:
+            st.caption(detail)
 
 
 def card_grid(items: list[dict[str, str]]) -> None:
-    """Render a responsive grid of equal-height cards."""
-    cards = "".join(
-        card_html(
-            item.get("title", ""),
-            item.get("value", ""),
-            item.get("detail", ""),
-            item.get("tone", "info"),
-            item.get("icon", ""),
-        )
-        for item in items
-    )
-    st.markdown(f'<section class="card-grid">{cards}</section>', unsafe_allow_html=True)
+    """Render a responsive grid using native Streamlit containers."""
+    if not items:
+        return
+
+    per_row = min(4, len(items))
+    for row_start in range(0, len(items), per_row):
+        row_items = items[row_start:row_start + per_row]
+        cols = st.columns(len(row_items))
+        for col, item in zip(cols, row_items):
+            with col:
+                card(
+                    item.get("title", ""),
+                    item.get("value", ""),
+                    item.get("detail", ""),
+                    item.get("tone", "info"),
+                    item.get("icon", ""),
+                )
+
+
+def status_rows(items: list[tuple[str, str, str]]) -> None:
+    """Render compact, readable status rows for sidebar and diagnostics."""
+    for name, value, tone in items:
+        cols = st.columns([3, 2], vertical_alignment="center")
+        with cols[0]:
+            st.markdown(f"**{escape(name)}**")
+        with cols[1]:
+            st.markdown(chip(value, tone), unsafe_allow_html=True)
 
 
 def section_header(title: str, subtitle: str = "", chips: list[tuple[str, str]] | None = None) -> None:
