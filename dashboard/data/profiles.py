@@ -3,9 +3,13 @@ Profiles Module
 ===============
 Model profile management.
 """
-from cache import get_cached, set_cached
-from config import PROFILES_FILE, CACHE_TTL
-from utils import load_json_file
+from dashboard.cache import get_cached, set_cached
+from dashboard.config import PROFILES_FILE
+from dashboard.utils import load_json_file, log_event
+
+
+def _is_valid_profile(profile: dict) -> bool:
+    return bool(profile.get("provider")) and bool(profile.get("model"))
 
 
 def load_profiles() -> dict:
@@ -15,8 +19,14 @@ def load_profiles() -> dict:
         return cached
 
     result = load_json_file(PROFILES_FILE, {})
-    set_cached("profiles", result)
-    return result
+    clean: dict = {}
+    for name, profile in result.items():
+        if isinstance(profile, dict) and _is_valid_profile(profile):
+            clean[name] = profile
+        else:
+            log_event("profile_invalid", "Skipped invalid model profile", {"name": name})
+    set_cached("profiles", clean)
+    return clean
 
 
 def get_paid_profiles() -> dict:
@@ -29,6 +39,8 @@ def get_profile_choices() -> list[tuple[str, str, dict]]:
     profiles = load_profiles()
     choices = []
     for name, profile in profiles.items():
+        if not _is_valid_profile(profile):
+            continue
         display = f"{profile.get('provider', 'unknown').title()}"
         if profile.get('paid'):
             display += " 💳"

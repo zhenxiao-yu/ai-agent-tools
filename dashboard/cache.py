@@ -8,7 +8,7 @@ from typing import Any
 
 import streamlit as st
 
-from config import CACHE_TTL
+from dashboard.config import CACHE_TTL
 
 
 def get_cached(key: str, ttl_key: str) -> Any:

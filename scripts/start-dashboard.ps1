@@ -3,7 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Root = "C:\ai-agent-tools"
+$Root = Split-Path -Parent $PSScriptRoot
 $Dashboard = Join-Path $Root "dashboard"
 $Venv = Join-Path $Dashboard ".venv"
 $Python = Join-Path $Venv "Scripts\python.exe"

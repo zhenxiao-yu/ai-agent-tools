@@ -5,12 +5,11 @@ Dashboard settings and configuration.
 """
 import streamlit as st
 
-from cache import invalidate_cache
-from config import PAGE_ICONS
-from data.allowlist import read_allowlist, write_allowlist, validate_repo
-from data.profiles import get_profile_choices
-from data.settings import load_settings, save_settings
-from ui.components import section_header, card
+from dashboard.data.allowlist import read_allowlist, write_allowlist, validate_repo
+from dashboard.data.profiles import get_profile_choices
+from dashboard.data.settings import load_settings, save_settings
+from dashboard.ui.components import section_header
+from dashboard.utils import normalize_repo_path, validate_branch_name
 
 
 def render():
@@ -31,6 +30,9 @@ def render():
     with col1:
         # Model selector
         model_options = get_profile_choices()
+        if not model_options:
+            st.error("No valid model profiles are available. Check `configs/model-profiles.json`.")
+            return
         current_model = settings.get("defaultModel", "ollama/qwen2.5-coder:14b")
 
         # Find current index
@@ -82,14 +84,25 @@ def render():
             help="Show advanced options"
         )
 
+        new_auto_routing = st.toggle(
+            "🧠 Auto Routing",
+            value=bool(settings.get("autoRouting", True)),
+            help="Let the dashboard recommend the best model and lane strategy for different task types."
+        )
+
     # Save button
     if st.button("💾 Save Settings", type="primary", use_container_width=True):
+        branch_ok, branch_error = validate_branch_name(new_branch)
+        if not branch_ok:
+            st.error(f"❌ {branch_error}")
+            return
         new_settings = {
             "defaultModel": new_model,
-            "defaultBaseBranch": new_branch,
+            "defaultBaseBranch": new_branch.strip(),
             "defaultIntervalHours": new_interval,
             "safetyMode": new_safety,
             "advancedMode": new_advanced,
+            "autoRouting": new_auto_routing,
         }
         save_settings(new_settings)
         st.success("✅ Settings saved!")
@@ -110,12 +123,13 @@ def render():
         )
 
         if st.button("✅ Validate & Add"):
-            valid, msg = validate_repo(new_path)
+            normalized_path = normalize_repo_path(new_path)
+            valid, msg = validate_repo(normalized_path)
             if valid:
-                if new_path not in current_repos:
-                    current_repos.append(new_path)
+                if normalized_path not in current_repos:
+                    current_repos.append(normalized_path)
                     write_allowlist(current_repos)
-                    st.success(f"Added: {new_path}")
+                    st.success(f"Added: {normalized_path}")
                     st.rerun()
                 else:
                     st.info("Repository already in list")

@@ -31,6 +31,7 @@ DEFAULT_SETTINGS = {
     "defaultIntervalHours": 2,
     "safetyMode": True,
     "advancedMode": False,
+    "autoRouting": True,
     "theme": "dark",
     "compactView": False,
 }
@@ -39,7 +40,7 @@ DEFAULT_SETTINGS = {
 # CACHE CONFIGURATION
 # ============================================
 CACHE_TTL = {
-    "service_status": 30,   # Service status refreshes every 30s
+    "service_status": 45,   # Service status refreshes every 45s
     "profiles": 300,        # Model profiles rarely change
     "settings": 60,         # Settings can change occasionally
     "issues": 15,           # Issues check more frequently
@@ -61,6 +62,7 @@ SECRET_PATTERNS = [
 # ============================================
 PAGE_ICONS = {
     "Home": "🏠",
+    "Automation": "🧠",
     "Fix Center": "🔧",
     "Tools / Integrations": "🛠️",
     "Workflow Wizard": "🧙",

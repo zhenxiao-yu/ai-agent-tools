@@ -5,14 +5,13 @@ Model selection with visual cards and easy switching.
 """
 import streamlit as st
 
-from cache import invalidate_cache
-from config import PROFILES_FILE
-from data.keys import key_present
-from data.profiles import load_profiles
-from data.settings import load_settings, save_settings
-from services import get_service_status
-from ui.components import section_header, card, action_result
-from utils import file_preview, run_ps
+from dashboard.data.routing import recommend_execution_plan
+from dashboard.data.keys import key_present
+from dashboard.data.profiles import load_profiles
+from dashboard.data.settings import load_settings, save_settings
+from dashboard.services import get_service_status, get_service_status_snapshot
+from dashboard.ui.components import section_header, card, action_result, chip, info_panel
+from dashboard.utils import run_ps
 
 
 def render():
@@ -24,7 +23,13 @@ def render():
     )
 
     settings = load_settings()
-    status = get_service_status()
+    status = get_service_status_snapshot(include_optional=True, include_model_details=True)
+    routing_preview = recommend_execution_plan(
+        "deep_planning",
+        active_projects=2,
+        status=status,
+        allow_paid=bool(settings.get("autoRouting", True)),
+    )
 
     # Status overview
     st.markdown("### 📊 System Status")
@@ -42,11 +47,25 @@ def render():
         card("GPU", "Active" if gpu_active else "CPU Only",
              "Acceleration", "ready" if gpu_active else "info")
 
+    info_panel(
+        "Automatic Routing",
+        f"With auto routing {'enabled' if settings.get('autoRouting', True) else 'disabled'}, the dashboard currently recommends `{routing_preview['chosen_model']}` for deeper planning or multi-project work.",
+        "info",
+    )
+
+    if st.button("↻ Refresh runtime details", use_container_width=True):
+        get_service_status(force_refresh=True, include_optional=True, include_model_details=True)
+        st.rerun()
+
     # Model Selector
     st.markdown("### 🎯 Model Selector")
-    st.info("Select your default model. Green = ready, Yellow = needs setup.")
+    st.info("Select your default model. Green = ready, Yellow = needs setup. Runtime details are loaded from the last refresh so this page opens instantly.")
 
     profiles = load_profiles()
+    if not profiles:
+        st.error("No model profiles were loaded. Check `configs/model-profiles.json`.")
+        return
+
     current_model = settings.get("defaultModel", "ollama/qwen2.5-coder:14b")
 
     for profile_name, profile in profiles.items():
@@ -80,7 +99,6 @@ def render():
                 st.caption(f"_{profile.get('role', '')}_")
 
             with cols[1]:
-                from ui.components import chip
                 st.markdown(chip(status_text, status_color), unsafe_allow_html=True)
 
             with cols[2]:

@@ -3,49 +3,69 @@ Local AI Mission Control
 ========================
 Refactored dashboard with modular architecture.
 """
+from pathlib import Path
+import sys
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 import streamlit as st
 
-from config import PAGE_ICONS
-from data.settings import load_settings, is_safety_mode
-from services import get_service_status
-from ui.styles import render_styles
-from ui.components import chip
+from dashboard.config import PAGE_ICONS
+from dashboard.data.settings import load_settings
+from dashboard.data.routing import recommend_execution_plan
+from dashboard.services import get_service_status, get_service_status_snapshot
+from dashboard.ui.styles import render_styles
+from dashboard.ui.components import chip, error_boundary, info_panel
+from dashboard.utils import log_event
 
 # Import page modules
-from pages import home, providers, models, settings
+from dashboard.pages import home, providers, models, settings, automation
 
 
 # Page registry
 PAGES = {
     "Home": home,
+    "Automation": automation,
     "Providers": providers,
     "Models": models,
     "Settings": settings,
 }
 
 
+def render_navigation() -> str:
+    """Render top navigation and return the selected page."""
+    pages = list(PAGES.keys())
+    if "current_page" not in st.session_state or st.session_state["current_page"] not in pages:
+        st.session_state["current_page"] = "Home"
+
+    st.markdown('<div class="top-nav-wrap"><div class="top-nav-title">Workspace Navigation</div>', unsafe_allow_html=True)
+    selected = st.radio(
+        "Navigate",
+        pages,
+        key="current_page",
+        horizontal=True,
+        label_visibility="collapsed",
+        format_func=lambda page: f"{PAGE_ICONS.get(page, '📄')} {page}",
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
+    return selected
+
+
 def render_sidebar():
-    """Render sidebar navigation."""
+    """Render contextual dock rather than primary navigation."""
     with st.sidebar:
-        st.markdown("### 🧭 Navigation")
-
-        # Page selector
-        pages = list(PAGES.keys())
-        page_labels = [f"{PAGE_ICONS.get(p, '📄')} {p}" for p in pages]
-
-        selected = st.selectbox(
-            "Go to",
-            page_labels,
-            key="nav_page",
-            label_visibility="collapsed"
-        )
-        current_page = pages[page_labels.index(selected)]
-
-        st.markdown("---")
+        st.markdown('<div class="dock-panel"><div class="dock-title">Control Dock</div>', unsafe_allow_html=True)
 
         # Quick status
-        st.markdown("### 📊 Status")
-        status = get_service_status()
+        status = get_service_status_snapshot()
+        plan = recommend_execution_plan(
+            task_key="parallel_projects",
+            active_projects=2,
+            status=status,
+            allow_paid=bool(load_settings().get("autoRouting", True)),
+        )
 
         status_items = [
             ("🟢" if status["ollama"] else "🔴", "Ollama", status["ollama"]),
@@ -57,28 +77,39 @@ def render_sidebar():
             status_text = "Online" if is_ok else "Offline"
             st.markdown(f"{icon} **{name}**: {status_text}")
 
-        st.markdown("---")
+        if status.get("errors"):
+            st.caption(f"{len(status['errors'])} background checks degraded")
+        st.caption("Showing last known status for instant navigation.")
+
+        if st.button("↻ Refresh Dock Status", use_container_width=True):
+            get_service_status(force_refresh=True)
+            st.rerun()
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
         # Safety mode indicator
         settings_data = load_settings()
         safety = settings_data.get("safetyMode", True)
-        st.markdown(
-            chip("Safety Mode ON" if safety else "Safety Mode OFF",
-                 "ready" if safety else "warn") + " Confirmation required",
-            unsafe_allow_html=True
+        info_panel(
+            "Runtime Mode",
+            f"{'Safety mode is on and confirmations stay explicit.' if safety else 'Safety mode is off, so review each action carefully.'}",
+            "ready" if safety else "warn",
         )
 
         # Current model
-        st.markdown("---")
-        st.markdown("### 🧠 Model")
         current_model = settings_data.get("defaultModel", "ollama/qwen2.5-coder:14b")
-        st.code(current_model, language="text")
+        info_panel(
+            "Current Model",
+            f"Default: `{current_model}`\n\nAuto route suggests `{plan['chosen_model']}` when work fans out.",
+            "info",
+        )
 
         if st.button("🔄 Switch Model"):
-            st.session_state["nav_page"] = f"{PAGE_ICONS['Models']} Models"
+            st.session_state["current_page"] = "Models"
             st.rerun()
-
-    return current_page
+        if st.button("🧠 Open Automation"):
+            st.session_state["current_page"] = "Automation"
+            st.rerun()
 
 
 def render_header():
@@ -110,21 +141,23 @@ def main():
     # Render header
     render_header()
 
-    # Render sidebar and get current page
-    current_page = render_sidebar()
+    # Render top navigation
+    current_page = render_navigation()
+
+    # Render contextual dock
+    render_sidebar()
 
     # Render selected page with error handling
-    try:
-        page_module = PAGES.get(current_page)
-        if page_module and hasattr(page_module, 'render'):
-            page_module.render()
-        else:
-            st.error(f"Page '{current_page}' not found")
-    except Exception as e:
-        st.error("❌ Page error")
-        st.exception(e)
-        if st.button("🔄 Reload"):
-            st.rerun()
+    page_module = PAGES.get(current_page)
+    if page_module and hasattr(page_module, "render"):
+        error_boundary(
+            f"{current_page} page",
+            page_module.render,
+            help_text="This page hit a recoverable error. Diagnostics have been logged.",
+        )
+    else:
+        st.error(f"Page '{current_page}' not found")
+        log_event("page_missing", "Unknown page requested", {"page": current_page})
 
 
 if __name__ == "__main__":

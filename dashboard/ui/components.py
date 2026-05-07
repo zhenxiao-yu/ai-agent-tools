@@ -4,7 +4,8 @@ Components Module
 Reusable UI components for the dashboard.
 """
 import streamlit as st
-from config import STATUS_ICONS, CARD_COLORS
+from dashboard.config import STATUS_ICONS
+from dashboard.utils import log_event
 
 
 def chip(label: str, tone: str = "muted") -> str:
@@ -62,7 +63,7 @@ def action_result(label: str, code: int, out: str) -> None:
 
 def quick_action(label: str, script: str, args: list[str] | None = None, help_text: str = "", timeout: int = 240) -> None:
     """Quick action button."""
-    from utils import run_ps
+    from dashboard.utils import run_ps
     args = args or []
     if st.button(label, key=f"qa_{label.replace(' ', '_')}", help=help_text):
         code, out = run_ps(script, *args, timeout=timeout)
@@ -91,3 +92,30 @@ def provider_card_header(provider: str, model: str, role: str, has_key: bool) ->
         <div>{chip(status, tone)}</div>
     </div>
     """, unsafe_allow_html=True)
+
+
+def info_panel(title: str, body: str, tone: str = "info") -> None:
+    """Render a compact information panel."""
+    safe_body = body.replace("\n", "<br>")
+    st.markdown(
+        f"""
+        <div class="info-panel panel-{tone}">
+            <div class="info-panel-title">{title}</div>
+            <div class="info-panel-body">{safe_body}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def error_boundary(title: str, renderer, help_text: str = "") -> None:
+    """Render a section with a recoverable error boundary."""
+    try:
+        renderer()
+    except Exception as exc:
+        log_event("ui_error_boundary", "Recoverable UI error", {"title": title, "error": str(exc)})
+        st.error(f"❌ {title} failed to render")
+        if help_text:
+            st.caption(help_text)
+        with st.expander("Diagnostic details"):
+            st.exception(exc)

@@ -4,21 +4,15 @@ Services Module
 Service detection and status checking.
 """
 import threading
+import time
 from typing import Any
 
-from cache import get_cached, set_cached
-from config import CACHE_TTL
-from utils import run_cmd, ps_inline, test_http
+from dashboard.cache import get_cached, set_cached
+from dashboard.utils import run_cmd, ps_inline, test_http, log_event
 
 
-def get_service_status(force_refresh: bool = False) -> dict[str, Any]:
-    """Get comprehensive service status with caching."""
-    if not force_refresh:
-        cached = get_cached("service_status", "service_status")
-        if cached:
-            return cached
-
-    status: dict[str, Any] = {
+def _empty_status() -> dict[str, Any]:
+    return {
         "ollama": False,
         "proxy": False,
         "cline": False,
@@ -30,22 +24,63 @@ def get_service_status(force_refresh: bool = False) -> dict[str, Any]:
         "scheduled": False,
         "models": "",
         "ps": "",
+        "errors": [],
+        "durations_ms": {},
     }
+
+
+def _status_cache_name(include_optional: bool, include_model_details: bool) -> str:
+    return f"service_status:{include_optional}:{include_model_details}"
+
+
+def get_service_status_snapshot(
+    include_optional: bool = False,
+    include_model_details: bool = False,
+) -> dict[str, Any]:
+    """Return the last cached status immediately without triggering live checks."""
+    cache_name = _status_cache_name(include_optional, include_model_details)
+    cached = get_cached(cache_name, "service_status")
+    return cached if cached else _empty_status()
+
+
+def get_service_status(
+    force_refresh: bool = False,
+    include_optional: bool = False,
+    include_model_details: bool = False,
+) -> dict[str, Any]:
+    """Get comprehensive service status with caching."""
+    cache_name = _status_cache_name(include_optional, include_model_details)
+    if not force_refresh:
+        cached = get_cached(cache_name, "service_status")
+        if cached:
+            return cached
+
+    status: dict[str, Any] = _empty_status()
 
     results: dict[str, Any] = {}
 
+    def timed_check(name: str, fn) -> None:
+        started = time.perf_counter()
+        try:
+            fn()
+        except Exception as exc:
+            results.setdefault("errors", []).append(f"{name}: {exc}")
+            log_event("service_check_error", "Service check failed", {"name": name, "error": str(exc)})
+        finally:
+            results.setdefault("durations_ms", {})[name] = round((time.perf_counter() - started) * 1000, 1)
+
     def check_ollama() -> None:
         results["ollama"] = test_http("http://127.0.0.1:11434/api/tags", timeout=3)
-        if results["ollama"]:
-            code, models = run_cmd(["ollama", "list"], timeout=8)
+        if results["ollama"] and include_model_details:
+            code, models = run_cmd(["ollama", "list"], timeout=4)
             results["models"] = models if code == 0 else ""
-            code, ps = run_cmd(["ollama", "ps"], timeout=8)
+            code, ps = run_cmd(["ollama", "ps"], timeout=4)
             results["ps"] = ps if code == 0 else ""
 
     def check_proxy() -> None:
         results["proxy"] = test_http(
             "http://127.0.0.1:8082/v1/models",
-            "@{ 'x-api-key'='freecc' }",
+            {"x-api-key": "freecc"},
             timeout=3,
         )
 
@@ -91,24 +126,28 @@ def get_service_status(force_refresh: bool = False) -> dict[str, Any]:
 
     # Run checks in parallel
     threads = [
-        threading.Thread(target=check_ollama),
-        threading.Thread(target=check_proxy),
-        threading.Thread(target=check_cline),
-        threading.Thread(target=check_aider),
-        threading.Thread(target=check_docker),
-        threading.Thread(target=check_openhands),
-        threading.Thread(target=check_playwright),
-        threading.Thread(target=check_github),
-        threading.Thread(target=check_scheduled),
+        threading.Thread(target=timed_check, args=("ollama", check_ollama), daemon=True),
+        threading.Thread(target=timed_check, args=("proxy", check_proxy), daemon=True),
+        threading.Thread(target=timed_check, args=("github", check_github), daemon=True),
+        threading.Thread(target=timed_check, args=("scheduled", check_scheduled), daemon=True),
     ]
+
+    if include_optional:
+        threads.extend([
+            threading.Thread(target=timed_check, args=("cline", check_cline), daemon=True),
+            threading.Thread(target=timed_check, args=("aider", check_aider), daemon=True),
+            threading.Thread(target=timed_check, args=("docker", check_docker), daemon=True),
+            threading.Thread(target=timed_check, args=("openhands", check_openhands), daemon=True),
+            threading.Thread(target=timed_check, args=("playwright_mcp", check_playwright), daemon=True),
+        ])
 
     for t in threads:
         t.start()
     for t in threads:
-        t.join(timeout=15)
+        t.join(timeout=5)
 
     status.update(results)
-    set_cached("service_status", status)
+    set_cached(cache_name, status)
     return status
 
 

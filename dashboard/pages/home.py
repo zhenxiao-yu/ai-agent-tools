@@ -4,17 +4,17 @@ Home Page
 Dashboard home with service status and quick actions.
 """
 from datetime import datetime
+import re
 
 import streamlit as st
 
-from cache import invalidate_cache
-from config import PAGE_ICONS
-from data.allowlist import read_allowlist
-from data.settings import load_settings
-from services import get_service_status
-from ui.components import section_header, card, quick_action, action_result
-from utils import latest_files, file_preview, today_count
-import re
+from dashboard.cache import invalidate_cache
+from dashboard.config import LOGS
+from dashboard.data.allowlist import read_allowlist
+from dashboard.data.routing import recommend_execution_plan
+from dashboard.services import get_service_status, get_service_status_snapshot
+from dashboard.ui.components import section_header, card, quick_action, info_panel
+from dashboard.utils import latest_files, file_preview, today_count, recent_dashboard_events
 
 
 def render():
@@ -27,7 +27,6 @@ def render():
 
     # Quick Actions
     st.markdown("### ⚡ Quick Actions")
-    cols = st.columns(5)
     actions = [
         ("🚀 Start Stack", "start-local-model-stack.ps1", "Start local AI stack"),
         ("🔍 Health Check", "doctor-local-ai.ps1", "Run diagnostics"),
@@ -35,26 +34,42 @@ def render():
         ("📊 Monitor", "ai-stack-monitor.ps1", "Monitor resources"),
     ]
 
-    for i, (label, script, help_text) in enumerate(actions):
-        with cols[i]:
-            quick_action(label, script, help_text=help_text)
-
-    with cols[4]:
-        if st.button("🔄 Refresh", help="Refresh dashboard"):
-            invalidate_cache()
-            st.rerun()
+    for row_start in range(0, len(actions), 2):
+        cols = st.columns(2)
+        for col_index, (label, script, help_text) in enumerate(actions[row_start:row_start + 2]):
+            with cols[col_index]:
+                quick_action(label, script, help_text=help_text)
+    if st.button("🔄 Refresh dashboard", help="Refresh cached service and settings state", use_container_width=True):
+        invalidate_cache()
+        get_service_status(force_refresh=True)
+        st.rerun()
 
     # Service Status
-    status = get_service_status()
+    status = get_service_status_snapshot(include_model_details=False)
     repos = read_allowlist()
+    plan = recommend_execution_plan("quick_fix", max(1, min(len(repos), 3)), status, allow_paid=False)
 
     # Count failures today
     failures_today = 0
-    for p in latest_files(__import__('config').LOGS, 80, "*.log"):
+    for p in latest_files(LOGS, 80, "*.log"):
         if datetime.fromtimestamp(p.stat().st_mtime).date() == datetime.now().date():
             preview = file_preview(p, 2500)
             if re.search(r"\b(ERROR|FAIL|failed)\b", preview, re.I):
                 failures_today += 1
+
+    warnings = []
+    if not status["ollama"]:
+        warnings.append("Ollama is offline, so local coding runs will not start.")
+    if not status["proxy"]:
+        warnings.append("The free Claude-compatible proxy is offline.")
+    if status.get("errors"):
+        warnings.append(f"{len(status['errors'])} background checks degraded; open diagnostics below.")
+
+    if warnings:
+        st.markdown('<div class="diagnostic-panel"><strong>Attention needed</strong><ul class="status-list">', unsafe_allow_html=True)
+        for item in warnings:
+            st.markdown(f"<li>{item}</li>", unsafe_allow_html=True)
+        st.markdown("</ul></div>", unsafe_allow_html=True)
 
     # Status Cards - Row 1
     st.markdown("### 🎯 Service Status")
@@ -65,12 +80,16 @@ def render():
              "Ollama API", "ready" if status["ollama"] else "danger", "🤖")
     with cols[1]:
         has_model = "qwen2.5-coder:14b" in status.get("models", "")
-        card("Default Model", "Available" if has_model else "Missing",
-             "qwen2.5-coder:14b", "ready" if has_model else "warn", "🧠")
+        if status["ollama"] and not status.get("models"):
+            card("Default Model", "Check Models page", "Deferred for faster load", "info", "🧠")
+        else:
+            card("Default Model", "Available" if has_model else "Missing",
+                 "qwen2.5-coder:14b", "ready" if has_model else "warn", "🧠")
     with cols[2]:
         gpu = "GPU" in status.get("ps", "")
-        card("GPU", "Active" if gpu else "CPU", "Acceleration",
-             "ready" if gpu else "info", "🎮")
+        gpu_label = "Active" if gpu else "Unknown"
+        gpu_detail = "Open Models page for live runtime details"
+        card("GPU", gpu_label, gpu_detail, "ready" if gpu else "info", "🎮")
     with cols[3]:
         card("Proxy", "Online" if status["proxy"] else "Offline",
              "free-claude-code", "ready" if status["proxy"] else "warn", "🔗")
@@ -88,9 +107,18 @@ def render():
     with cols[3]:
         card("Projects", str(len(repos)), "Repositories", "info", "📁")
 
+    st.markdown("### 🧠 Plug-and-Play Workflow")
+    cols = st.columns(3)
+    with cols[0]:
+        info_panel("1. Pick a Lane", "Home stays fast. Use Automation to preview routing and Models only when you need deeper runtime details.", "info")
+    with cols[1]:
+        info_panel("2. Let It Queue", f"Recommended default route is `{plan['chosen_model']}` with {plan['lane_mode'].lower()}.", "ready")
+    with cols[2]:
+        info_panel("3. Review Outputs", "Workers should surface logs, validation, and reports as results of a run, not hidden side effects.", "ready")
+
     # Activity
     st.markdown("### 📈 Activity")
-    runs = today_count(__import__('config').LOGS, "web-ai-*.log")
+    runs = today_count(LOGS, "web-ai-*.log")
     cols = st.columns(2)
     with cols[0]:
         card("Runs Today", str(runs), "Worker executions", "info", "▶️")
@@ -106,3 +134,25 @@ def render():
         st.warning("**Check Fix Center**\n\nThere are issues that need attention.")
     else:
         st.success("**All systems ready**\n\nRun a dry-run on any project to start.")
+
+    st.markdown("### 🔀 Multi-Project Impact")
+    impact_cols = st.columns(3)
+    with impact_cols[0]:
+        card("Routing Advice", plan["route_label"], plan["reason"], "info", "🛰️")
+    with impact_cols[1]:
+        card("Parallel Lanes", str(plan["recommended_concurrency"]), plan["lane_mode"], "warn" if plan["recommended_concurrency"] > 1 else "ready", "🧵")
+    with impact_cols[2]:
+        card("Speed Impact", "Queue grows" if len(repos) > 1 else "Stable", plan["speed_note"], "warn" if len(repos) > 1 else "ready", "⚡")
+
+    with st.expander("🧪 Diagnostics and recent dashboard logs"):
+        if status.get("errors"):
+            st.markdown("**Degraded checks**")
+            st.code("\n".join(status["errors"]), language="text")
+        events = recent_dashboard_events(25)
+        if events:
+            st.markdown("**Recent events**")
+            st.code("\n".join(events), language="text")
+        latest = latest_files(LOGS, 1, "dashboard*.log")
+        if latest:
+            st.markdown(f"**Latest dashboard log:** `{latest[0].name}`")
+            st.code(file_preview(latest[0], 6000), language="text")

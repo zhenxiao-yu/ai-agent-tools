@@ -5,7 +5,8 @@ Repository allowlist management.
 """
 from pathlib import Path
 
-from config import ALLOWLIST_FILE
+from dashboard.config import ALLOWLIST_FILE
+from dashboard.utils import normalize_repo_path
 
 
 def read_allowlist() -> list[str]:
@@ -54,6 +55,7 @@ def remove_repo(path: str) -> None:
 
 def validate_repo(path: str) -> tuple[bool, str]:
     """Validate repo path."""
+    path = normalize_repo_path(path)
     if not path:
         return False, "❌ Enter a repo path."
 

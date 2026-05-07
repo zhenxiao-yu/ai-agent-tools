@@ -12,8 +12,6 @@ def render_styles():
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
         :root {
           --bg: #0a0e14;
           --panel: #0f1419;
@@ -32,7 +30,7 @@ def render_styles():
           --muted: #8b949e;
           --text: #e6edf3;
           --text-secondary: #7d8590;
-          --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          --font: "Segoe UI", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         .stApp {
@@ -51,6 +49,11 @@ def render_styles():
         section[data-testid="stSidebar"] {
             background: var(--panel);
             border-right: 1px solid var(--line);
+        }
+
+        .block-container {
+            padding-top: 1.6rem;
+            padding-bottom: 3rem;
         }
 
         /* Hero Section */
@@ -123,6 +126,112 @@ def render_styles():
             display: flex;
             flex-wrap: wrap;
             gap: 0.5rem;
+        }
+
+        .diagnostic-panel {
+            background: rgba(15, 20, 25, 0.92);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .dock-panel {
+            background: linear-gradient(180deg, var(--panel2) 0%, var(--panel) 100%);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .dock-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.08em;
+            margin-bottom: 0.6rem;
+            font-weight: 700;
+        }
+
+        .status-list {
+            margin: 0;
+            padding-left: 1.1rem;
+            color: var(--text-secondary);
+        }
+
+        .top-nav-wrap {
+            background: linear-gradient(135deg, var(--panel2) 0%, var(--panel) 100%);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 0.9rem 1rem 0.6rem;
+            margin-bottom: 1rem;
+        }
+
+        .top-nav-title {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.35rem;
+            font-weight: 700;
+        }
+
+        .info-panel {
+            border-radius: 12px;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--line);
+            background: linear-gradient(135deg, var(--panel2) 0%, var(--panel) 100%);
+        }
+
+        .info-panel-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 0.45rem;
+            font-weight: 700;
+        }
+
+        .info-panel-body {
+            color: var(--text);
+            line-height: 1.55;
+        }
+
+        .insight-panel {
+            border: 1px solid rgba(88, 166, 255, 0.35);
+            background: rgba(88, 166, 255, 0.1);
+            color: #d6ecff;
+            padding: 1rem 1.1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            line-height: 1.55;
+        }
+
+        .flow-lane {
+            min-height: 148px;
+            border-radius: 14px;
+            padding: 1rem;
+            border: 1px solid var(--line);
+            background: linear-gradient(180deg, var(--panel2) 0%, var(--panel) 100%);
+            margin-bottom: 1rem;
+        }
+
+        .lane-ready { border-color: rgba(63, 185, 80, 0.35); }
+        .lane-info { border-color: rgba(88, 166, 255, 0.35); }
+        .lane-warn { border-color: rgba(210, 153, 34, 0.35); }
+
+        .flow-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 0.55rem;
+        }
+
+        .flow-detail {
+            color: var(--text-secondary);
+            line-height: 1.55;
+            font-size: 0.92rem;
         }
 
         /* ============================================
@@ -238,6 +347,19 @@ def render_styles():
         }
         div[data-testid="stButton"] button:active { transform: translateY(0); }
 
+        div[data-testid="stHorizontalBlock"] > div:has(> div[data-testid="stRadio"]) {
+            width: 100%;
+        }
+
+        div[data-testid="stRadio"] label p {
+            font-size: 0.95rem;
+        }
+
+        .stCode pre, code, pre {
+            white-space: pre-wrap !important;
+            word-break: break-word;
+        }
+
         /* Primary Button */
         div[data-testid="stButton"] button[kind="primary"] {
             background: linear-gradient(180deg, var(--cyan) 0%, #0969da 100%);
@@ -303,6 +425,8 @@ def render_styles():
             .card-grid { grid-template-columns: 1fr; }
             .hero h1 { font-size: 1.75rem; }
             .hero { padding: 1.5rem; }
+            .top-banner { align-items: flex-start; }
+            .flow-lane { min-height: 0; }
         }
         </style>
         """,

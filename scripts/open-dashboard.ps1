@@ -3,7 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Root = "C:\ai-agent-tools"
+$Root = Split-Path -Parent $PSScriptRoot
 $StartScript = Join-Path $Root "scripts\start-dashboard.ps1"
 $Url = "http://127.0.0.1:$Port"
 

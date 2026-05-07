@@ -5,13 +5,10 @@ Paid provider management with intuitive API key input.
 """
 import streamlit as st
 
-from cache import invalidate_cache
-from config import CONFIGS
-from data.keys import key_present, set_env_key, remove_env_key
-from data.profiles import get_paid_profiles
-from services import get_service_status
-from ui.components import section_header, card, action_result, provider_card_header
-from utils import file_preview, run_ps
+from dashboard.data.keys import key_present, set_env_key, remove_env_key
+from dashboard.data.profiles import get_paid_profiles
+from dashboard.ui.components import section_header, action_result, provider_card_header
+from dashboard.utils import file_preview, run_ps
 
 
 def render():
@@ -43,6 +40,9 @@ def render():
     st.info("Enter your API keys below. They are stored in Windows environment variables and never saved to files.")
 
     profiles = get_paid_profiles()
+    if not profiles:
+        st.info("No paid provider profiles are configured.")
+        return
 
     for profile_name, profile in profiles.items():
         env_var = profile.get("apiKeyEnvVar")
@@ -81,6 +81,8 @@ def render():
                             st.rerun()
                         else:
                             st.error("❌ Failed to save key")
+                    elif submitted:
+                        st.error("❌ API key cannot be blank.")
             else:
                 # Show actions for configured key
                 cols = st.columns([1, 1, 2])
@@ -107,5 +109,5 @@ def render():
 
     # Reference
     with st.expander("📋 Provider Configuration"):
-        from config import PROFILES_FILE
+        from dashboard.config import PROFILES_FILE
         st.code(file_preview(PROFILES_FILE, 12000))
