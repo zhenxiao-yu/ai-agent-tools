@@ -1,409 +1,170 @@
-# Local AI Agent Tools
+<h1 align="center">🤖 AI Agent Tools</h1>
 
-This folder contains a conservative local AI coding workflow for Windows web-app development. It is designed to keep working after paid Codex or Claude limits expire by using Ollama, local coding models, Cline, Aider, GitHub CLI, Playwright, and PowerShell scripts.
+<p align="center">
+  <strong>Local-First AI Coding Workflow for Windows</strong><br>
+  Conservative, traceable, and cost-effective AI-assisted development
+</p>
 
-The system is intentionally small and traceable: inspect, choose one small task, branch, edit, validate, report, review, stop.
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#documentation">Documentation</a> •
+  <a href="#architecture">Architecture</a>
+</p>
 
-## Tool Roles
+---
 
-- Ollama: runs local models such as qwen2.5-coder:14b.
-- Cline: supervised PM, Tech Lead, QA, Reviewer, DevOps, and browser/debugging workflows inside VS Code.
-- Aider: focused Developer AI for small code edits on an AI branch.
-- GitHub CLI: inspects issues, PRs, and GitHub Actions logs.
-- Playwright: browser smoke checks for web apps.
-- PowerShell scripts: repeatable branch-based automation, reports, logs, and scheduled runs.
+## 🎯 Overview
 
-## Daily Workflow
+AI Agent Tools 是一个为 Windows 设计的保守型本地 AI 编码工作流。它让你在付费 API（Codex/Claude）额度用完后，依然能使用本地模型（Ollama）继续高效开发。
 
-1. Pick a repo.
-2. Make sure your human work is committed or stashed.
-3. Run one worker pass.
-4. Review the report and diff.
-5. Run the reviewer script.
-6. Commit only if you approve.
+**核心理念：小步快跑，人工审核，安全第一**
 
-## 24/7 Scheduled Workflow
+```
+检查 → 选择小任务 → 创建分支 → 编辑 → 验证 → 报告 → 审核 → 停止
+```
 
-Scheduled mode runs one small branch-based worker pass per interval. It does not run an infinite loop, commit, push, or merge.
+## ✨ Features
 
-Scheduled mode is disabled until you install the Windows Scheduled Task. It also requires the exact repo path to be listed in `C:\ai-agent-tools\configs\repo-allowlist.txt`.
+| 功能 | 描述 |
+|------|------|
+| 🔧 **本地模型支持** | Ollama + qwen2.5-coder:14b，零 API 费用 |
+| 🎨 **Web 仪表板** | Streamlit 驱动的可视化控制中心 |
+| 📝 **多 Agent 工作流** | PM、Tech Lead、Developer、QA、Reviewer、DevOps |
+| ⏰ **定时任务** | Windows 计划任务集成，24/7 自动化 |
+| 🔒 **安全优先** | 分支隔离、人工审核、禁止自动推送到主分支 |
+| 🌐 **混合模式** | 付费模型做架构，本地模型做实现 |
 
-Do not point scheduled mode at a broad folder. It does not scan your GitHub folder and does not run across all repos by default. Multi-repo automation requires an explicit approved list.
+## 🚀 Quick Start
 
-Install:
+### 1. 克隆仓库
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\install-scheduled-web-worker.ps1 -RepoPath "C:\path\to\my\web-app" -BaseBranch "main" -IntervalHours 2
+git clone https://github.com/zhenxiao-yu/ai-agent-tools.git
+cd ai-agent-tools
 ```
 
-Disable:
+### 2. 启动本地模型栈
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\remove-scheduled-web-worker.ps1
+powershell -ExecutionPolicy Bypass -File scripts/start-local-model-stack.ps1
 ```
 
-## Morning Review
+### 3. 启动仪表板
 
 ```powershell
-cd "C:\path\to\my\web-app"
-git status
-git branch --sort=-committerdate
-git diff --stat
-git diff
+powershell -ExecutionPolicy Bypass -File scripts/open-dashboard.ps1
 ```
 
-Then run:
+访问 http://127.0.0.1:8501
+
+### 4. 运行健康检查
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\morning-review.ps1 -RepoPath "C:\path\to\my\web-app"
+powershell -ExecutionPolicy Bypass -File scripts/doctor-local-ai.ps1
 ```
 
-## Safety Rules
+## 📚 Documentation
 
-- Never push directly to main or master.
-- Never force push.
-- Never auto-commit by default.
-- Never run on a dirty repo with uncommitted human changes.
-- Never modify secrets, .env files, API keys, SSH keys, tokens, credentials, auth config, payment config, production deployment config, database migrations, or private config files.
-- Never touch node_modules, dist, build, .next, coverage, .git, cache folders, generated files, or binary artifacts.
-- For Unity repos, never touch Library, Temp, Logs, Obj, Build, Builds, scene/prefab/project settings unattended.
-- Stop after one small task.
+### 核心工作流
 
-## Add A New Web Repo
+- **[AGENTS.md](configs/AGENTS.web.template.md)** - Agent 角色定义模板
+- **[TOOL_ORCHESTRATION.md](configs/TOOL_ORCHESTRATION.md)** - 工具协调指南
+- **[VSCODE_WORKFLOW.md](configs/VSCODE_WORKFLOW.md)** - VS Code 集成工作流
+- **[FIRST_REAL_REPO_CHECKLIST.md](configs/FIRST_REAL_REPO_CHECKLIST.md)** - 首次使用清单
 
-1. Run `C:\ai-agent-tools\scripts\audit-web-repo.ps1`.
-2. Copy `C:\ai-agent-tools\configs\AGENTS.web.template.md` into the repo as `AGENTS.md` only after approving that change.
-3. Run `run-web-ai-worker.ps1 -DryRun`.
-4. Run one manual worker pass.
-5. Review the diff and reviewer report.
-6. Only consider scheduled mode after 2-3 successful manual runs.
+### 配置指南
 
-See `C:\ai-agent-tools\configs\FIRST_REAL_REPO_CHECKLIST.md`.
+| 文档 | 用途 |
+|------|------|
+| [CLINE_LOCAL_SETUP.md](configs/CLINE_LOCAL_SETUP.md) | Cline 本地模式配置 |
+| [AIDER_LOCAL_SETUP.md](configs/AIDER_LOCAL_SETUP.md) | Aider 本地模式配置 |
+| [DASHBOARD_SETUP.md](configs/DASHBOARD_SETUP.md) | 仪表板设置 |
+| [PROVIDER_KEYS_SETUP.md](configs/PROVIDER_KEYS_SETUP.md) | 付费 Provider 配置 |
+| [RECOVERY_GUIDE.md](configs/RECOVERY_GUIDE.md) | 故障恢复指南 |
 
-## Node Versions
+## 🏗️ Architecture
 
-The worker prints current Node/npm versions and warns when `package.json` has an obvious `engines.node` conflict. It does not change Node versions automatically.
-
-If a repo needs Node 18, 20, 22, or another version, use a tool such as nvm-windows or Volta after approving that change.
-
-## One-Off Worker Pass
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\run-web-ai-worker.ps1 -RepoPath "C:\path\to\my\web-app" -BaseBranch "main"
+```
+┌─────────────────────────────────────────────────────────┐
+│                    VS Code + Cline                       │
+│              (交互式 Agent 开发环境)                      │
+└─────────────────────────────────────────────────────────┘
+                           │
+┌─────────────────────────────────────────────────────────┐
+│              AI Agent Tools Dashboard                   │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────┐   │
+│  │ Fix     │ │ Projects│ │ Models  │ │ Scheduler   │   │
+│  │ Center  │ │         │ │         │ │             │   │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────────┘   │
+└─────────────────────────────────────────────────────────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        ▼                  ▼                  ▼
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+│   Ollama     │   │   Aider      │   │  OpenHands   │
+│ (本地模型)    │   │ (Git 感知编辑)│   │(自主实验)    │
+└──────────────┘   └──────────────┘   └──────────────┘
+        │                  │                  │
+        └──────────────────┼──────────────────┘
+                           ▼
+              ┌─────────────────────┐
+              │   GitHub CLI        │
+              │   GitHub Actions    │
+              │   Playwright        │
+              └─────────────────────┘
 ```
 
-Dry run:
+## 🛡️ Safety Rules
 
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\run-web-ai-worker.ps1 -RepoPath "C:\path\to\my\web-app" -BaseBranch "main" -DryRun
-```
+- ✅ 禁止直接推送到 main/master
+- ✅ 禁止 force push
+- ✅ 禁止自动提交（默认）
+- ✅ 禁止在 dirty repo 上运行
+- ✅ 禁止修改 secrets、.env、密钥、生产配置
 
-No-edit audit:
+## 🧰 Tools & Integrations
 
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\audit-web-repo.ps1 -RepoPath "C:\path\to\my\web-app"
-```
+| 工具 | 用途 |
+|------|------|
+| **Ollama** | 本地 LLM 推理 |
+| **Cline** | VS Code Agent 扩展 |
+| **Aider** | Git 感知的终端编辑 |
+| **GitHub CLI** | Issues/PRs/Actions 检查 |
+| **Playwright** | 浏览器自动化测试 |
+| **Streamlit** | 仪表板 UI |
 
-## GitHub Pipeline Logs
+## 📊 Project Stats
 
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\check-github-pipelines.ps1 -RepoPath "C:\path\to\my\web-app"
-```
+- **Scripts**: 50+ PowerShell 自动化脚本
+- **Configs**: 15+ 配置文档
+- **Dashboard Pages**: 15+ 功能页面
+- **Provider Support**: DeepSeek、Kimi、OpenRouter、Qwen、SiliconFlow 等
 
-## Review, Commit, Or Discard
+## 🤝 Contributing
 
-Keep good changes:
+这个项目采用保守的 AI 辅助开发模式。如果你想贡献：
 
-```powershell
-git add .
-git commit -m "AI-assisted maintenance pass"
-```
+1. Fork 仓库
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 使用本地模型进行开发
+4. 提交更改 (`git commit -m 'Add amazing feature'`)
+5. 推送到分支 (`git push origin feature/amazing-feature`)
+6. 创建 Pull Request
 
-Discard bad changes:
+## 📄 License
 
-```powershell
-git restore .
-git checkout main
-git branch -D BRANCH_NAME
-```
+MIT License - 详见 [LICENSE](LICENSE) 文件
 
-## Paid And Local Model Mix
+## 🙏 Acknowledgments
 
-Use paid Codex or Claude when available for architecture, hard debugging, risky refactors, and high-context reviews. Use local models for small validation-driven tasks: lint fixes, TypeScript fixes, README updates, tiny component polish, and smoke tests.
+- [Ollama](https://ollama.com/) - 本地模型运行
+- [Cline](https://github.com/cline/cline) - VS Code Agent 扩展
+- [Aider](https://github.com/paul-gauthier/aider) - Git 感知编辑
+- [OpenHands](https://github.com/All-Hands-AI/OpenHands) - 自主开发实验
 
-## Tips For Small Local Models
+---
 
-- Keep tasks small.
-- Make one change per run.
-- Validate everything.
-- Avoid huge context.
-- Use `AGENTS.md`.
-- Use the task queue.
-- Run a reviewer pass before committing.
-
-## Free Claude Code Local Mode
-
-`free-claude-code` is a local compatibility proxy for Claude Code-style clients. In this setup it routes requests to Ollama and `qwen2.5-coder:14b`. It is not real Anthropic Claude, and no paid API keys are required for Ollama mode.
-
-Start local stack:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\start-local-model-stack.ps1
-```
-
-Health check:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\health-local-ai-stack.ps1
-```
-
-Start proxy:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\start-free-claude-code-proxy.ps1
-```
-
-Test proxy:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\test-free-claude-code-proxy.ps1
-```
-
-Start Claude Code local mode:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\start-claude-code-local.ps1
-```
-
-Enable auto-start:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\enable-local-ai-autostart.ps1
-```
-
-Disable auto-start:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\disable-local-ai-autostart.ps1
-```
-
-VS Code local setup:
-
-- Cline direct local mode: Provider `Ollama`, Base URL `http://localhost:11434`, Model `qwen2.5-coder:14b`.
-- Claude Code compatibility mode: start the proxy, then use `ANTHROPIC_BASE_URL=http://127.0.0.1:8082` and `ANTHROPIC_AUTH_TOKEN=freecc` in the local client environment.
-
-Use Cline + Ollama for the simplest VS Code flow, Aider + Ollama for branch-based terminal edits, and free-claude-code + Ollama only when a Claude Code-style client needs an Anthropic-compatible local endpoint.
-
-Troubleshooting:
-
-- Run the health check first.
-- Confirm Ollama responds at `http://127.0.0.1:11434`.
-- Confirm the proxy responds at `http://127.0.0.1:8082/v1/models`.
-- Do not append `/v1` to `ANTHROPIC_BASE_URL` for Claude Code.
-- Keep tasks small because local models are weaker than paid frontier models.
-
-## Performance Tools
-
-Useful lightweight CLI tools:
-
-- `rg`: fast text search.
-- `fd`: fast file search.
-- `jq`: JSON inspection.
-- `bat`: readable file viewing.
-- `delta`: readable git diffs.
-- `pnpm`: package manager through Corepack.
-
-Validate:
-
-```powershell
-rg --version
-fd --version
-jq --version
-bat --version
-delta --version
-pnpm --version
-```
-
-If a tool was installed by `winget` but is not visible yet, open a new terminal so PATH refreshes.
-
-## Repo Health And Validation
-
-Repo health scan:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\repo-health-scan.ps1 -RepoPath "C:\path\to\my\web-app"
-```
-
-Validation runner:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\repo-validation-runner.ps1 -RepoPath "C:\path\to\my\web-app"
-```
-
-AI stack monitor:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\ai-stack-monitor.ps1
-```
-
-Watch mode:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\ai-stack-monitor.ps1 -Watch
-```
-
-## Dashboard
-
-Start the local dashboard:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\start-dashboard.ps1
-```
-
-Open the dashboard, starting it only if needed:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\open-dashboard.ps1
-```
-
-Open:
-
-```text
-http://127.0.0.1:8501
-```
-
-Create desktop and Start Menu shortcuts:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\create-dashboard-shortcut.ps1
-```
-
-The dashboard reads explicit repo paths from `C:\ai-agent-tools\configs\repo-allowlist.txt`. It does not scan your whole disk, does not enable scheduled mode, does not commit, and does not push.
-
-See `C:\ai-agent-tools\configs\DASHBOARD_SETUP.md`.
-
-Dashboard pages:
-
-- Home
-- Fix Center
-- Tools / Integrations
-- Workflow Wizard
-- Projects
-- Vibe Code
-- Runs
-- Morning Review
-- Scheduler
-- Models
-- Providers
-- Logs & Reports
-- VS Code
-- Settings
-- Help
-
-The dashboard is designed for free local multi-project vibe coding: dry-run first, one small AI branch, validation, report, human review.
-
-Fix Center:
-
-```text
-Open the dashboard -> Fix Center
-```
-
-Create a non-secret diagnostic bundle:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\make-diagnostic-bundle.ps1
-```
-
-Recovery guide:
-
-```text
-C:\ai-agent-tools\configs\RECOVERY_GUIDE.md
-```
-
-## Tool Orchestration
-
-The dashboard is mission control, not a replacement for existing agent tools.
-
-Use:
-
-- OpenHands for optional autonomous dev workspace experiments.
-- Cline for VS Code interactive agent work.
-- Aider for Git-aware focused edits.
-- Aider Browser UI for manual browser-based Aider sessions.
-- Playwright MCP for browser automation tools.
-- free-claude-code for Claude Code-compatible local mode.
-- Ollama for local/free models.
-- GitHub CLI for Actions/issues/PRs.
-
-Docs:
-
-```text
-C:\ai-agent-tools\configs\TOOL_ORCHESTRATION.md
-C:\ai-agent-tools\configs\WHAT_NOT_TO_REBUILD.md
-```
-
-## VS Code Control Center
-
-Open the Local AI Control Center workspace:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\open-ai-tools-vscode.ps1
-```
-
-Open VS Code and dashboard together:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\open-ai-tools-vscode.ps1 -OpenDashboard
-```
-
-Run the full local doctor check:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\doctor-local-ai.ps1
-```
-
-Inside VS Code, use `Tasks: Run Task` and choose an `AI:` task.
-
-See `C:\ai-agent-tools\configs\VSCODE_WORKFLOW.md`.
-
-## Chinese And Payment-Friendly Providers
-
-Optional paid provider hooks live in:
-
-```text
-C:\ai-agent-tools\configs\providers
-C:\ai-agent-tools\configs\model-profiles.json
-```
-
-Provider health:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\provider-health.ps1
-```
-
-Manage provider keys without printing them:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\manage-provider-secrets.ps1 -Action List
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\manage-provider-secrets.ps1 -Action Set -Provider deepseek
-```
-
-Test one provider:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\test-provider-model.ps1 -ProviderName deepseek -BaseUrl "https://api.deepseek.com" -Model "deepseek-chat" -ApiKeyEnvVar DEEPSEEK_API_KEY
-```
-
-Compare local and configured providers:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\compare-models.ps1
-```
-
-Manual paid worker:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\ai-agent-tools\scripts\run-web-ai-worker-paid.ps1 -RepoPath "C:\path\to\repo" -BaseBranch "main" -ProviderName deepseek -BaseUrl "https://api.deepseek.com" -Model "deepseek-chat" -ApiKeyEnvVar DEEPSEEK_API_KEY
-```
-
-Paid providers may cost money. Do not schedule paid provider workers by default.
+<p align="center">
+  Made with ❤️ for cost-effective AI coding
+</p>
