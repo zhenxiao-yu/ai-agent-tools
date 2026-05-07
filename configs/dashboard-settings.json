@@ -3,5 +3,7 @@
   "defaultBaseBranch": "main",
   "defaultIntervalHours": 2,
   "safetyMode": true,
-  "advancedMode": false
+  "advancedMode": false,
+  "theme": "dark",
+  "compactView": false
 }
