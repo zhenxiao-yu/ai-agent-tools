@@ -7,7 +7,12 @@ import streamlit as st
 
 from dashboard.data.routing import TASK_PROFILES, recommend_execution_plan, build_agent_flow
 from dashboard.data.settings import load_settings, save_settings
-from dashboard.services import get_service_status, get_service_status_snapshot
+from dashboard.services import (
+    describe_service_status_snapshot,
+    ensure_service_status_snapshot_fresh,
+    get_service_status,
+    get_service_status_snapshot,
+)
 from dashboard.ui.components import section_header, card, chip
 
 
@@ -15,6 +20,7 @@ def render():
     """Render automation and orchestration guidance."""
     settings = load_settings()
     status = get_service_status_snapshot(include_optional=False, include_model_details=False)
+    ensure_service_status_snapshot_fresh(include_optional=False, include_model_details=False)
 
     section_header(
         "Automation",
@@ -65,6 +71,7 @@ def render():
     st.markdown("### 🧩 What This Means")
     st.markdown(f'<div class="insight-panel">{plan["speed_note"]}</div>', unsafe_allow_html=True)
     st.caption(plan["fallback"])
+    st.caption(describe_service_status_snapshot(status))
     st.caption("Routing advice uses last known machine status so this page stays instant.")
 
     st.markdown("### 🔀 Agent Flow")

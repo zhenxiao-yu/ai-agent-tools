@@ -12,7 +12,12 @@ from dashboard.cache import invalidate_cache
 from dashboard.config import LOGS
 from dashboard.data.allowlist import read_allowlist
 from dashboard.data.routing import recommend_execution_plan
-from dashboard.services import get_service_status, get_service_status_snapshot
+from dashboard.services import (
+    describe_service_status_snapshot,
+    ensure_service_status_snapshot_fresh,
+    get_service_status,
+    get_service_status_snapshot,
+)
 from dashboard.ui.components import section_header, card, quick_action, info_panel
 from dashboard.utils import latest_files, file_preview, today_count, recent_dashboard_events
 
@@ -46,6 +51,8 @@ def render():
 
     # Service Status
     status = get_service_status_snapshot(include_model_details=False)
+    ensure_service_status_snapshot_fresh(include_model_details=False)
+    st.caption(describe_service_status_snapshot(status))
     repos = read_allowlist()
     plan = recommend_execution_plan("quick_fix", max(1, min(len(repos), 3)), status, allow_paid=False)
 
@@ -58,9 +65,9 @@ def render():
                 failures_today += 1
 
     warnings = []
-    if not status["ollama"]:
+    if status.get("snapshot_ready") and not status["ollama"]:
         warnings.append("Ollama is offline, so local coding runs will not start.")
-    if not status["proxy"]:
+    if status.get("snapshot_ready") and not status["proxy"]:
         warnings.append("The free Claude-compatible proxy is offline.")
     if status.get("errors"):
         warnings.append(f"{len(status['errors'])} background checks degraded; open diagnostics below.")
@@ -76,34 +83,51 @@ def render():
     cols = st.columns(4)
 
     with cols[0]:
-        card("Local AI", "Ready" if status["ollama"] else "Offline",
-             "Ollama API", "ready" if status["ollama"] else "danger", "🤖")
+        if status.get("snapshot_ready"):
+            card("Local AI", "Ready" if status["ollama"] else "Offline",
+                 "Ollama API", "ready" if status["ollama"] else "danger", "🤖")
+        else:
+            card("Local AI", "Checking", "Background snapshot warming up", "info", "🤖")
     with cols[1]:
         has_model = "qwen2.5-coder:14b" in status.get("models", "")
-        if status["ollama"] and not status.get("models"):
+        if not status.get("snapshot_ready"):
+            card("Default Model", "Pending", "Waiting for runtime snapshot", "info", "🧠")
+        elif status["ollama"] and not status.get("models"):
             card("Default Model", "Check Models page", "Deferred for faster load", "info", "🧠")
         else:
             card("Default Model", "Available" if has_model else "Missing",
                  "qwen2.5-coder:14b", "ready" if has_model else "warn", "🧠")
     with cols[2]:
         gpu = "GPU" in status.get("ps", "")
-        gpu_label = "Active" if gpu else "Unknown"
-        gpu_detail = "Open Models page for live runtime details"
-        card("GPU", gpu_label, gpu_detail, "ready" if gpu else "info", "🎮")
+        if status.get("snapshot_ready"):
+            gpu_label = "Active" if gpu else "Unknown"
+            gpu_detail = "Open Models page for live runtime details"
+            card("GPU", gpu_label, gpu_detail, "ready" if gpu else "info", "🎮")
+        else:
+            card("GPU", "Pending", "Waiting for runtime snapshot", "info", "🎮")
     with cols[3]:
-        card("Proxy", "Online" if status["proxy"] else "Offline",
-             "free-claude-code", "ready" if status["proxy"] else "warn", "🔗")
+        if status.get("snapshot_ready"):
+            card("Proxy", "Online" if status["proxy"] else "Offline",
+                 "free-claude-code", "ready" if status["proxy"] else "warn", "🔗")
+        else:
+            card("Proxy", "Checking", "Background snapshot warming up", "info", "🔗")
 
     # Status Cards - Row 2
     cols = st.columns(4)
     with cols[0]:
         card("Dashboard", "Online", "http://localhost:8501", "ready", "📊")
     with cols[1]:
-        card("GitHub", "Connected" if status["github"] else "Not Connected",
-             "CLI auth", "ready" if status["github"] else "warn", "🐙")
+        if status.get("snapshot_ready"):
+            card("GitHub", "Connected" if status["github"] else "Not Connected",
+                 "CLI auth", "ready" if status["github"] else "warn", "🐙")
+        else:
+            card("GitHub", "Checking", "Background snapshot warming up", "info", "🐙")
     with cols[2]:
-        card("Scheduler", "Enabled" if status["scheduled"] else "Disabled",
-             "Local only", "warn" if status["scheduled"] else "muted", "⏰")
+        if status.get("snapshot_ready"):
+            card("Scheduler", "Enabled" if status["scheduled"] else "Disabled",
+                 "Local only", "warn" if status["scheduled"] else "muted", "⏰")
+        else:
+            card("Scheduler", "Checking", "Background snapshot warming up", "info", "⏰")
     with cols[3]:
         card("Projects", str(len(repos)), "Repositories", "info", "📁")
 

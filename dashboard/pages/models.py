@@ -9,7 +9,12 @@ from dashboard.data.routing import recommend_execution_plan
 from dashboard.data.keys import key_present
 from dashboard.data.profiles import load_profiles
 from dashboard.data.settings import load_settings, save_settings
-from dashboard.services import get_service_status, get_service_status_snapshot
+from dashboard.services import (
+    describe_service_status_snapshot,
+    ensure_service_status_snapshot_fresh,
+    get_service_status,
+    get_service_status_snapshot,
+)
 from dashboard.ui.components import section_header, card, action_result, chip, info_panel
 from dashboard.utils import run_ps
 
@@ -24,6 +29,7 @@ def render():
 
     settings = load_settings()
     status = get_service_status_snapshot(include_optional=True, include_model_details=True)
+    ensure_service_status_snapshot_fresh(include_optional=True, include_model_details=True)
     routing_preview = recommend_execution_plan(
         "deep_planning",
         active_projects=2,
@@ -52,6 +58,7 @@ def render():
         f"With auto routing {'enabled' if settings.get('autoRouting', True) else 'disabled'}, the dashboard currently recommends `{routing_preview['chosen_model']}` for deeper planning or multi-project work.",
         "info",
     )
+    st.caption(describe_service_status_snapshot(status))
 
     if st.button("↻ Refresh runtime details", use_container_width=True):
         get_service_status(force_refresh=True, include_optional=True, include_model_details=True)

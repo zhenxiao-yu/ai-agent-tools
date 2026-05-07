@@ -160,6 +160,7 @@ def load_json_file(path: Path, default: Any = None) -> Any:
 
 def save_json_file(path: Path, data: Any) -> None:
     """Save data to JSON file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 

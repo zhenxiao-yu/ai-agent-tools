@@ -15,7 +15,12 @@ import streamlit as st
 from dashboard.config import PAGE_ICONS
 from dashboard.data.settings import load_settings
 from dashboard.data.routing import recommend_execution_plan
-from dashboard.services import get_service_status, get_service_status_snapshot
+from dashboard.services import (
+    describe_service_status_snapshot,
+    ensure_service_status_snapshot_fresh,
+    get_service_status,
+    get_service_status_snapshot,
+)
 from dashboard.ui.styles import render_styles
 from dashboard.ui.components import chip, error_boundary, info_panel
 from dashboard.utils import log_event
@@ -60,6 +65,7 @@ def render_sidebar():
 
         # Quick status
         status = get_service_status_snapshot()
+        ensure_service_status_snapshot_fresh()
         plan = recommend_execution_plan(
             task_key="parallel_projects",
             active_projects=2,
@@ -67,19 +73,25 @@ def render_sidebar():
             allow_paid=bool(load_settings().get("autoRouting", True)),
         )
 
-        status_items = [
-            ("🟢" if status["ollama"] else "🔴", "Ollama", status["ollama"]),
-            ("🟢" if status["proxy"] else "🔴", "Proxy", status["proxy"]),
-            ("🟢" if status["github"] else "🟡", "GitHub", status["github"]),
-        ]
+        if status.get("snapshot_ready"):
+            status_items = [
+                ("🟢" if status["ollama"] else "🔴", "Ollama", status["ollama"]),
+                ("🟢" if status["proxy"] else "🔴", "Proxy", status["proxy"]),
+                ("🟢" if status["github"] else "🟡", "GitHub", status["github"]),
+            ]
 
-        for icon, name, is_ok in status_items:
-            status_text = "Online" if is_ok else "Offline"
-            st.markdown(f"{icon} **{name}**: {status_text}")
+            for icon, name, is_ok in status_items:
+                status_text = "Online" if is_ok else "Offline"
+                st.markdown(f"{icon} **{name}**: {status_text}")
 
-        if status.get("errors"):
-            st.caption(f"{len(status['errors'])} background checks degraded")
-        st.caption("Showing last known status for instant navigation.")
+            if status.get("errors"):
+                st.caption(f"{len(status['errors'])} background checks degraded")
+        else:
+            st.markdown("🟡 **Machine status**: Warming up")
+            st.markdown("⚪ **Routing signals**: Loading snapshot")
+
+        st.caption(describe_service_status_snapshot(status))
+        st.caption("Instant navigation uses saved status, not live probes.")
 
         if st.button("↻ Refresh Dock Status", use_container_width=True):
             get_service_status(force_refresh=True)

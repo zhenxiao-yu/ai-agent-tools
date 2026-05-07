@@ -16,6 +16,7 @@ LOGS = ROOT / "logs"
 REPORTS = ROOT / "reports"
 TEAM_REPORTS = ROOT / "team" / "reports"
 CONFIGS = ROOT / "configs"
+STATUS_SNAPSHOTS = LOGS / "status-snapshots"
 
 # Data files
 ALLOWLIST_FILE = CONFIGS / "repo-allowlist.txt"
@@ -46,6 +47,9 @@ CACHE_TTL = {
     "issues": 15,           # Issues check more frequently
     "keys": 60,             # Environment key checks
 }
+
+STATUS_SNAPSHOT_MAX_AGE_SECONDS = 120
+STATUS_BACKGROUND_REFRESH_COOLDOWN_SECONDS = 20
 
 # ============================================
 # SECURITY
