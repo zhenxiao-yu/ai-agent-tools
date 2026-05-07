@@ -23,7 +23,7 @@ def render():
     )
 
     # Settings form
-    st.markdown("### ⚙️ General Settings")
+    st.markdown("### General Settings")
 
     col1, col2 = st.columns(2)
 
@@ -43,7 +43,7 @@ def render():
                 break
 
         selected_idx = st.selectbox(
-            "🧠 Default Model",
+            "Default Model",
             range(len(model_options)),
             index=default_index,
             format_func=lambda i: model_options[i][0],
@@ -53,7 +53,7 @@ def render():
 
         # Branch
         new_branch = st.text_input(
-            "🌿 Default Branch",
+            "Default Branch",
             value=settings.get("defaultBaseBranch", "main"),
             help="Default base branch for AI operations"
         )
@@ -65,7 +65,7 @@ def render():
         interval_index = interval_options.index(current_interval) if current_interval in interval_options else 1
 
         new_interval = st.selectbox(
-            "⏱️ Check Interval (hours)",
+            "Check Interval (Hours)",
             interval_options,
             index=interval_index,
             help="Default interval for scheduled checks"
@@ -73,28 +73,28 @@ def render():
 
         # Toggles
         new_safety = st.toggle(
-            "🛡️ Safety Mode",
+            "Safety Mode",
             value=bool(settings.get("safetyMode", True)),
             help="Require confirmation for risky actions"
         )
 
         new_advanced = st.toggle(
-            "⚡ Advanced Mode",
+            "Advanced Mode",
             value=bool(settings.get("advancedMode", False)),
             help="Show advanced options"
         )
 
         new_auto_routing = st.toggle(
-            "🧠 Auto Routing",
+            "Auto Routing",
             value=bool(settings.get("autoRouting", True)),
             help="Let the dashboard recommend the best model and lane strategy for different task types."
         )
 
     # Save button
-    if st.button("💾 Save Settings", type="primary", use_container_width=True):
+    if st.button("Save Settings", type="primary", use_container_width=True):
         branch_ok, branch_error = validate_branch_name(new_branch)
         if not branch_ok:
-            st.error(f"❌ {branch_error}")
+            st.error(branch_error)
             return
         new_settings = {
             "defaultModel": new_model,
@@ -105,24 +105,24 @@ def render():
             "autoRouting": new_auto_routing,
         }
         save_settings(new_settings)
-        st.success("✅ Settings saved!")
+        st.success("Settings saved.")
         st.rerun()
 
     # Allowlist editor
     st.markdown("---")
-    st.markdown("### 📋 Repository Allowlist")
+    st.markdown("### Repository Allowlist")
 
     current_repos = read_allowlist()
 
     # Add new repo
-    with st.expander("➕ Add Repository", expanded=len(current_repos) == 0):
+    with st.expander("Add Repository", expanded=len(current_repos) == 0):
         new_path = st.text_input(
             "Repository Path",
             placeholder=r"C:\path\to\repo",
             help="Full path to a Git repository with a supported project file such as package.json or pyproject.toml"
         )
 
-        if st.button("✅ Validate & Add"):
+        if st.button("Validate and Add"):
             normalized_path = normalize_repo_path(new_path)
             valid, msg = validate_repo(normalized_path)
             if valid:
@@ -144,11 +144,11 @@ def render():
             with cols[0]:
                 st.code(repo)
             with cols[1]:
-                if st.button("🗑️", key=f"del_repo_{i}"):
+                if st.button("Remove", key=f"del_repo_{i}"):
                     current_repos.pop(i)
                     write_allowlist(current_repos)
                     st.rerun()
     else:
         st.info("No repositories configured. Add one above.")
 
-    st.warning("⚠️ Never store API keys here. Use the Providers page.")
+    st.warning("Never store API keys here. Use the Providers page.")

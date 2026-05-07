@@ -18,7 +18,7 @@ from dashboard.services import (
     get_service_status,
     get_service_status_snapshot,
 )
-from dashboard.ui.components import section_header, card, quick_action, info_panel
+from dashboard.ui.components import card_grid, info_panel, quick_action, section_header
 from dashboard.utils import latest_files, file_preview, today_count, recent_dashboard_events
 
 
@@ -31,12 +31,12 @@ def render():
     )
 
     # Quick Actions
-    st.markdown("### ⚡ Quick Actions")
+    st.markdown("### Quick Actions")
     actions = [
-        ("🚀 Start Stack", "start-local-model-stack.ps1", "Start local AI stack"),
-        ("🔍 Health Check", "doctor-local-ai.ps1", "Run diagnostics"),
-        ("📝 Open VS Code", "open-ai-tools-vscode.ps1", "Open workspace"),
-        ("📊 Monitor", "ai-stack-monitor.ps1", "Monitor resources"),
+        ("Start Stack", "start-local-model-stack.ps1", "Start the local AI stack"),
+        ("Health Check", "doctor-local-ai.ps1", "Run machine diagnostics"),
+        ("Open VS Code", "open-ai-tools-vscode.ps1", "Open the workspace"),
+        ("Monitor", "ai-stack-monitor.ps1", "Review local resource usage"),
     ]
 
     for row_start in range(0, len(actions), 2):
@@ -44,7 +44,7 @@ def render():
         for col_index, (label, script, help_text) in enumerate(actions[row_start:row_start + 2]):
             with cols[col_index]:
                 quick_action(label, script, help_text=help_text)
-    if st.button("🔄 Refresh dashboard", help="Refresh cached service and settings state", use_container_width=True):
+    if st.button("Refresh Dashboard", help="Refresh cached service and settings state", use_container_width=True):
         invalidate_cache()
         get_service_status(force_refresh=True)
         st.rerun()
@@ -73,65 +73,61 @@ def render():
         warnings.append(f"{len(status['errors'])} background checks degraded; open diagnostics below.")
 
     if warnings:
-        st.markdown('<div class="diagnostic-panel"><strong>Attention needed</strong><ul class="status-list">', unsafe_allow_html=True)
+        st.markdown('<div class="diagnostic-panel"><strong>Attention Needed</strong><ul class="status-list">', unsafe_allow_html=True)
         for item in warnings:
             st.markdown(f"<li>{item}</li>", unsafe_allow_html=True)
         st.markdown("</ul></div>", unsafe_allow_html=True)
 
     # Status Cards - Row 1
-    st.markdown("### 🎯 Service Status")
-    cols = st.columns(4)
-
-    with cols[0]:
-        if status.get("snapshot_ready"):
-            card("Local AI", "Ready" if status["ollama"] else "Offline",
-                 "Ollama API", "ready" if status["ollama"] else "danger", "🤖")
-        else:
-            card("Local AI", "Checking", "Background snapshot warming up", "info", "🤖")
-    with cols[1]:
-        has_model = "qwen2.5-coder:14b" in status.get("models", "")
-        if not status.get("snapshot_ready"):
-            card("Default Model", "Pending", "Waiting for runtime snapshot", "info", "🧠")
-        elif status["ollama"] and not status.get("models"):
-            card("Default Model", "Check Models page", "Deferred for faster load", "info", "🧠")
-        else:
-            card("Default Model", "Available" if has_model else "Missing",
-                 "qwen2.5-coder:14b", "ready" if has_model else "warn", "🧠")
-    with cols[2]:
-        gpu = "GPU" in status.get("ps", "")
-        if status.get("snapshot_ready"):
-            gpu_label = "Active" if gpu else "Unknown"
-            gpu_detail = "Open Models page for live runtime details"
-            card("GPU", gpu_label, gpu_detail, "ready" if gpu else "info", "🎮")
-        else:
-            card("GPU", "Pending", "Waiting for runtime snapshot", "info", "🎮")
-    with cols[3]:
-        if status.get("snapshot_ready"):
-            card("Proxy", "Online" if status["proxy"] else "Offline",
-                 "free-claude-code", "ready" if status["proxy"] else "warn", "🔗")
-        else:
-            card("Proxy", "Checking", "Background snapshot warming up", "info", "🔗")
+    st.markdown("### Service Status")
+    has_model = "qwen2.5-coder:14b" in status.get("models", "")
+    gpu = "GPU" in status.get("ps", "")
+    card_grid([
+        {
+            "title": "Local AI",
+            "value": "Ready" if status.get("snapshot_ready") and status["ollama"] else "Checking" if not status.get("snapshot_ready") else "Offline",
+            "detail": "Ollama API" if status.get("snapshot_ready") else "Background snapshot warming up",
+            "tone": "ready" if status.get("snapshot_ready") and status["ollama"] else "info" if not status.get("snapshot_ready") else "danger",
+        },
+        {
+            "title": "Default Model",
+            "value": "Pending" if not status.get("snapshot_ready") else "Check Models" if status["ollama"] and not status.get("models") else "Available" if has_model else "Missing",
+            "detail": "Waiting for runtime snapshot" if not status.get("snapshot_ready") else "Deferred for faster load" if status["ollama"] and not status.get("models") else "qwen2.5-coder:14b",
+            "tone": "info" if not status.get("snapshot_ready") or (status["ollama"] and not status.get("models")) else "ready" if has_model else "warn",
+        },
+        {
+            "title": "Compute",
+            "value": "Pending" if not status.get("snapshot_ready") else "Active" if gpu else "Unknown",
+            "detail": "Waiting for runtime snapshot" if not status.get("snapshot_ready") else "Open Models for live runtime details",
+            "tone": "info" if not status.get("snapshot_ready") or not gpu else "ready",
+        },
+        {
+            "title": "Proxy",
+            "value": "Checking" if not status.get("snapshot_ready") else "Online" if status["proxy"] else "Offline",
+            "detail": "Background snapshot warming up" if not status.get("snapshot_ready") else "free-claude-code",
+            "tone": "info" if not status.get("snapshot_ready") else "ready" if status["proxy"] else "warn",
+        },
+    ])
 
     # Status Cards - Row 2
-    cols = st.columns(4)
-    with cols[0]:
-        card("Dashboard", "Online", "http://localhost:8501", "ready", "📊")
-    with cols[1]:
-        if status.get("snapshot_ready"):
-            card("GitHub", "Connected" if status["github"] else "Not Connected",
-                 "CLI auth", "ready" if status["github"] else "warn", "🐙")
-        else:
-            card("GitHub", "Checking", "Background snapshot warming up", "info", "🐙")
-    with cols[2]:
-        if status.get("snapshot_ready"):
-            card("Scheduler", "Enabled" if status["scheduled"] else "Disabled",
-                 "Local only", "warn" if status["scheduled"] else "muted", "⏰")
-        else:
-            card("Scheduler", "Checking", "Background snapshot warming up", "info", "⏰")
-    with cols[3]:
-        card("Projects", str(len(repos)), "Repositories", "info", "📁")
+    card_grid([
+        {"title": "Dashboard", "value": "Online", "detail": "http://localhost:8501", "tone": "ready"},
+        {
+            "title": "GitHub",
+            "value": "Checking" if not status.get("snapshot_ready") else "Connected" if status["github"] else "Not Connected",
+            "detail": "Background snapshot warming up" if not status.get("snapshot_ready") else "CLI auth",
+            "tone": "info" if not status.get("snapshot_ready") else "ready" if status["github"] else "warn",
+        },
+        {
+            "title": "Scheduler",
+            "value": "Checking" if not status.get("snapshot_ready") else "Enabled" if status["scheduled"] else "Disabled",
+            "detail": "Background snapshot warming up" if not status.get("snapshot_ready") else "Local only",
+            "tone": "info" if not status.get("snapshot_ready") else "warn" if status["scheduled"] else "muted",
+        },
+        {"title": "Projects", "value": str(len(repos)), "detail": "Repositories", "tone": "info"},
+    ])
 
-    st.markdown("### 🧠 Plug-and-Play Workflow")
+    st.markdown("### Plug-and-Play Workflow")
     cols = st.columns(3)
     with cols[0]:
         info_panel("1. Pick a Lane", "Home stays fast. Use Automation to preview routing and Models only when you need deeper runtime details.", "info")
@@ -141,34 +137,44 @@ def render():
         info_panel("3. Review Outputs", "Workers should surface logs, validation, and reports as results of a run, not hidden side effects.", "ready")
 
     # Activity
-    st.markdown("### 📈 Activity")
+    st.markdown("### Activity")
     runs = today_count(LOGS, "web-ai-*.log")
-    cols = st.columns(2)
-    with cols[0]:
-        card("Runs Today", str(runs), "Worker executions", "info", "▶️")
-    with cols[1]:
-        card("Failures", str(failures_today), "Errors detected",
-             "danger" if failures_today else "ready", "⚠️")
+    card_grid([
+        {"title": "Runs Today", "value": str(runs), "detail": "Worker executions", "tone": "info"},
+        {
+            "title": "Failures",
+            "value": str(failures_today),
+            "detail": "Errors detected",
+            "tone": "danger" if failures_today else "ready",
+        },
+    ])
 
-    # Recommendations
-    st.markdown("### 💡 Next Steps")
+    st.markdown("### Next Steps")
     if not repos:
-        st.info("**Add your first project**\n\nThe system needs one explicit repo path.")
+        st.info("Add your first project.\n\nThe system needs one explicit repo path.")
     elif failures_today > 0:
-        st.warning("**Check Fix Center**\n\nThere are issues that need attention.")
+        st.warning("Check Fix Center.\n\nThere are issues that need attention.")
     else:
-        st.success("**All systems ready**\n\nRun a dry-run on any project to start.")
+        st.success("All systems are ready.\n\nRun a dry-run on any project to start.")
 
-    st.markdown("### 🔀 Multi-Project Impact")
-    impact_cols = st.columns(3)
-    with impact_cols[0]:
-        card("Routing Advice", plan["route_label"], plan["reason"], "info", "🛰️")
-    with impact_cols[1]:
-        card("Parallel Lanes", str(plan["recommended_concurrency"]), plan["lane_mode"], "warn" if plan["recommended_concurrency"] > 1 else "ready", "🧵")
-    with impact_cols[2]:
-        card("Speed Impact", "Queue grows" if len(repos) > 1 else "Stable", plan["speed_note"], "warn" if len(repos) > 1 else "ready", "⚡")
+    st.markdown("### Multi-Project Impact")
+    card_grid([
+        {"title": "Routing Advice", "value": plan["route_label"], "detail": plan["reason"], "tone": "info"},
+        {
+            "title": "Parallel Lanes",
+            "value": str(plan["recommended_concurrency"]),
+            "detail": plan["lane_mode"],
+            "tone": "warn" if plan["recommended_concurrency"] > 1 else "ready",
+        },
+        {
+            "title": "Speed Impact",
+            "value": "Queue Grows" if len(repos) > 1 else "Stable",
+            "detail": plan["speed_note"],
+            "tone": "warn" if len(repos) > 1 else "ready",
+        },
+    ])
 
-    with st.expander("🧪 Diagnostics and recent dashboard logs"):
+    with st.expander("Diagnostics and Recent Dashboard Logs"):
         if status.get("errors"):
             st.markdown("**Degraded checks**")
             st.code("\n".join(status["errors"]), language="text")

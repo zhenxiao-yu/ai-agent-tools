@@ -15,7 +15,7 @@ from dashboard.services import (
     get_service_status,
     get_service_status_snapshot,
 )
-from dashboard.ui.components import section_header, card, action_result, chip, info_panel
+from dashboard.ui.components import action_result, card_grid, chip, info_panel, section_header
 from dashboard.utils import run_ps
 
 
@@ -38,20 +38,29 @@ def render():
     )
 
     # Status overview
-    st.markdown("### 📊 System Status")
-    cols = st.columns(3)
-
-    with cols[0]:
-        card("Ollama", "Online" if status["ollama"] else "Offline",
-             "Local server", "ready" if status["ollama"] else "danger")
-    with cols[1]:
-        has_default = "qwen2.5-coder:14b" in status.get("models", "")
-        card("Default Model", "Available" if has_default else "Missing",
-             "qwen2.5-coder:14b", "ready" if has_default else "warn")
-    with cols[2]:
-        gpu_active = "GPU" in status.get("ps", "")
-        card("GPU", "Active" if gpu_active else "CPU Only",
-             "Acceleration", "ready" if gpu_active else "info")
+    st.markdown("### System Status")
+    has_default = "qwen2.5-coder:14b" in status.get("models", "")
+    gpu_active = "GPU" in status.get("ps", "")
+    card_grid([
+        {
+            "title": "Ollama",
+            "value": "Online" if status["ollama"] else "Offline",
+            "detail": "Local server",
+            "tone": "ready" if status["ollama"] else "danger",
+        },
+        {
+            "title": "Default Model",
+            "value": "Available" if has_default else "Missing",
+            "detail": "qwen2.5-coder:14b",
+            "tone": "ready" if has_default else "warn",
+        },
+        {
+            "title": "Compute",
+            "value": "Active" if gpu_active else "CPU Only",
+            "detail": "Acceleration",
+            "tone": "ready" if gpu_active else "info",
+        },
+    ])
 
     info_panel(
         "Automatic Routing",
@@ -60,13 +69,13 @@ def render():
     )
     st.caption(describe_service_status_snapshot(status))
 
-    if st.button("↻ Refresh runtime details", use_container_width=True):
+    if st.button("Refresh Runtime Details", use_container_width=True):
         get_service_status(force_refresh=True, include_optional=True, include_model_details=True)
         st.rerun()
 
     # Model Selector
-    st.markdown("### 🎯 Model Selector")
-    st.info("Select your default model. Green = ready, Yellow = needs setup. Runtime details are loaded from the last refresh so this page opens instantly.")
+    st.markdown("### Model Selector")
+    st.info("Select the default model. Ready models are available now. Runtime details are loaded from the last refresh so this page opens instantly.")
 
     profiles = load_profiles()
     if not profiles:
@@ -87,22 +96,21 @@ def render():
         if is_paid:
             key_ok = key_present(profile.get("apiKeyEnvVar"))
             status_color = "ready" if key_ok else "warn"
-            status_text = "✅ Key ready" if key_ok else "⚠️ Key missing"
+            status_text = "Key Ready" if key_ok else "Key Missing"
         else:
             models_list = status.get("models", "")
             model_short = profile.get("model", "").split(":")[0]
             is_available = model_short in models_list or profile.get("model") in models_list
             status_color = "ready" if is_available else "warn"
-            status_text = "✅ Available" if is_available else "⚠️ Not downloaded"
+            status_text = "Available" if is_available else "Not Downloaded"
 
         # Model row
         with st.container():
             cols = st.columns([4, 2, 1])
 
             with cols[0]:
-                icon = "💳" if is_paid else "🆓"
                 provider = profile.get("provider", "unknown").title()
-                st.markdown(f"**{icon} {provider}** - `{profile.get('model')}`")
+                st.markdown(f"**{provider}** - `{profile.get('model')}`")
                 st.caption(f"_{profile.get('role', '')}_")
 
             with cols[1]:
@@ -116,13 +124,13 @@ def render():
                         new_settings = settings.copy()
                         new_settings["defaultModel"] = model_id
                         save_settings(new_settings)
-                        st.success(f"✅ Default model set to {model_id}")
+                        st.success(f"Default model set to {model_id}")
                         st.rerun()
 
         st.divider()
 
     # Model info
-    st.markdown("### 📦 Installed Models")
+    st.markdown("### Installed Models")
     col1, col2 = st.columns(2)
     with col1:
         st.code(status.get("models", "No models"), language="text")
@@ -130,13 +138,13 @@ def render():
         st.code(status.get("ps", "No running models"), language="text")
 
     # Actions
-    st.markdown("### 🔧 Actions")
-    cols = st.columns(5)
+    st.markdown("### Actions")
+    cols = st.columns(4)
     actions = [
-        ("🚀 Start Stack", "start-local-model-stack.ps1"),
-        ("🔍 Health", "health-local-ai-stack.ps1"),
-        ("🧪 Test", "test-local-model.ps1"),
-        ("🔗 Proxy", "start-free-claude-code-proxy.ps1"),
+        ("Start Stack", "start-local-model-stack.ps1"),
+        ("Health", "health-local-ai-stack.ps1"),
+        ("Test", "test-local-model.ps1"),
+        ("Start Proxy", "start-free-claude-code-proxy.ps1"),
     ]
 
     for i, (label, script) in enumerate(actions):

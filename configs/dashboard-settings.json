@@ -4,6 +4,7 @@
   "defaultIntervalHours": 2,
   "safetyMode": true,
   "advancedMode": false,
+  "autoRouting": true,
   "theme": "dark",
   "compactView": false
 }
