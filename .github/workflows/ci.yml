@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate PowerShell and repo docs
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required files
+        shell: pwsh
+        run: |
+          $required = @('README.md', 'AGENTS.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'SECURITY.md', 'LICENSE', 'VERSION')
+          foreach ($path in $required) {
+            if (-not (Test-Path $path)) { throw "Missing required file: $path" }
+          }
+
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Recurse -Filter *.ps1
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              Write-Host "Syntax errors in $($file.FullName)"
+              $errors | ForEach-Object { Write-Host $_ }
+              throw "PowerShell parse validation failed"
+            }
+          }
+
+      - name: Ensure release docs mention current files
+        shell: pwsh
+        run: |
+          $readme = Get-Content README.md -Raw
+          foreach ($needle in @('AGENTS.md', 'CHANGELOG.md', 'LICENSE')) {
+            if ($readme -notmatch [regex]::Escape($needle)) {
+              throw "README.md should reference $needle"
+            }
+          }
