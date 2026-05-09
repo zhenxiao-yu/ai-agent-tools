@@ -147,16 +147,44 @@ def render():
 
     # Actions
     st.markdown("### Actions")
-    cols = st.columns(4)
-    actions = [
+
+    st.caption("Local stack")
+    stack_cols = st.columns(4)
+    stack_actions = [
         ("Start Stack", "start-local-model-stack.ps1"),
+        ("Stop Stack", "stop-local-model-stack.ps1"),
         ("Health", "health-local-ai-stack.ps1"),
         ("Test", "test-local-model.ps1"),
-        ("Start Proxy", "start-free-claude-code-proxy.ps1"),
     ]
-
-    for i, (label, script) in enumerate(actions):
-        with cols[i]:
-            if st.button(label, key=f"act_{i}"):
+    for i, (label, script) in enumerate(stack_actions):
+        with stack_cols[i]:
+            if st.button(label, key=f"stack_act_{i}", use_container_width=True):
                 code, out = run_ps(script, timeout=300)
                 action_result(label, code, out)
+
+    st.caption("Claude-compatible proxy")
+    proxy_cols = st.columns(4)
+    proxy_running = bool(status.get("proxy"))
+    proxy_actions = [
+        ("Start Proxy", "start-free-claude-code-proxy.ps1", []),
+        ("Stop Proxy", "stop-free-claude-code-proxy.ps1", []),
+        ("Restart Proxy", None, None),  # composite
+        ("Test Proxy", "test-free-claude-code-proxy.ps1", []),
+    ]
+    for i, (label, script, extra) in enumerate(proxy_actions):
+        with proxy_cols[i]:
+            disabled = (label == "Stop Proxy" and not proxy_running) or (
+                label == "Test Proxy" and not proxy_running
+            )
+            if st.button(label, key=f"proxy_act_{i}", disabled=disabled, use_container_width=True):
+                if label == "Restart Proxy":
+                    code1, out1 = run_ps("stop-free-claude-code-proxy.ps1", timeout=60)
+                    code2, out2 = run_ps("start-free-claude-code-proxy.ps1", timeout=300)
+                    code = code1 if code1 != 0 else code2
+                    out = "[stop]\n" + (out1 or "") + "\n[start]\n" + (out2 or "")
+                else:
+                    code, out = run_ps(script, *(extra or []), timeout=300)
+                action_result(label, code, out)
+                if label in ("Start Proxy", "Stop Proxy", "Restart Proxy"):
+                    get_service_status(force_refresh=True, include_optional=True, include_model_details=True)
+                    st.rerun()
