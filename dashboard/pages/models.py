@@ -135,6 +135,28 @@ def render():
 
         st.divider()
 
+    # Recommended pulls — one-click installs of the curated coding model set.
+    st.markdown("### Recommended Coding Models")
+    installed_text = status.get("models", "") or ""
+    recommended = [
+        ("qwen2.5-coder:7b", "Fast coder (~5 GB)", "Lower-VRAM coder. Best for laptops or background runs."),
+        ("qwen2.5-coder:14b", "Default coder (~9 GB)", "Sweet spot for desktop GPUs. Used by the worker by default."),
+        ("llama3.1:8b", "Planner / chat (~5 GB)", "Better long-context reasoning for the pipeline's planning roles."),
+    ]
+    rec_cols = st.columns(3)
+    for i, (tag, label, blurb) in enumerate(recommended):
+        with rec_cols[i]:
+            already = tag in installed_text
+            st.markdown(f"**{label}**")
+            st.caption(f"`{tag}`")
+            st.caption(blurb)
+            if already:
+                st.button("Installed", key=f"pull_{i}", disabled=True, use_container_width=True)
+            else:
+                if st.button(f"Pull {tag.split(':')[0]}", key=f"pull_{i}", use_container_width=True):
+                    code, out = run_ps("tune-ollama.ps1", "-ModelsToPull", tag, timeout=3600)
+                    action_result(f"Pull {tag}", code, out)
+
     # Model info
     with st.expander("Advanced Runtime Output"):
         col1, col2 = st.columns(2)
@@ -161,6 +183,36 @@ def render():
             if st.button(label, key=f"stack_act_{i}", use_container_width=True):
                 code, out = run_ps(script, timeout=300)
                 action_result(label, code, out)
+
+    st.caption("Ollama tuning")
+    tune_cols = st.columns(3)
+    with tune_cols[0]:
+        if st.button(
+            "Tune Ollama",
+            key="tune_ollama",
+            use_container_width=True,
+            help="Persist sane defaults: OLLAMA_KEEP_ALIVE=30m, NUM_PARALLEL=2, MAX_LOADED_MODELS=2.",
+        ):
+            code, out = run_ps("tune-ollama.ps1", timeout=120)
+            action_result("Tune Ollama", code, out)
+    with tune_cols[1]:
+        if st.button(
+            "Pull Recommended",
+            key="tune_pull",
+            use_container_width=True,
+            help="Download the curated coding-model set (qwen2.5-coder + llama3.1).",
+        ):
+            code, out = run_ps("tune-ollama.ps1", "-InstallRecommended", timeout=3600)
+            action_result("Pull Recommended Models", code, out)
+    with tune_cols[2]:
+        if st.button(
+            "Reset Tuning",
+            key="tune_reset",
+            use_container_width=True,
+            help="Remove the persisted Ollama env vars.",
+        ):
+            code, out = run_ps("tune-ollama.ps1", "-Reset", timeout=60)
+            action_result("Reset Tuning", code, out)
 
     st.caption("Claude-compatible proxy")
     proxy_cols = st.columns(4)
