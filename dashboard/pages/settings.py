@@ -9,7 +9,7 @@ from dashboard.data.allowlist import read_allowlist, write_allowlist, validate_r
 from dashboard.data.profiles import get_profile_choices
 from dashboard.data.settings import load_settings, save_settings
 from dashboard.ui.components import section_header
-from dashboard.utils import normalize_repo_path, validate_branch_name
+from dashboard.utils import normalize_repo_path, ps_inline, run_cmd, validate_branch_name
 
 
 def render():
@@ -78,12 +78,6 @@ def render():
             help="Require confirmation for risky actions"
         )
 
-        new_advanced = st.toggle(
-            "Advanced Mode",
-            value=bool(settings.get("advancedMode", False)),
-            help="Show advanced options"
-        )
-
         new_auto_routing = st.toggle(
             "Auto Routing",
             value=bool(settings.get("autoRouting", True)),
@@ -101,7 +95,6 @@ def render():
             "defaultBaseBranch": new_branch.strip(),
             "defaultIntervalHours": new_interval,
             "safetyMode": new_safety,
-            "advancedMode": new_advanced,
             "autoRouting": new_auto_routing,
         }
         save_settings(new_settings)
@@ -140,10 +133,21 @@ def render():
     if current_repos:
         st.markdown("**Current repositories:**")
         for i, repo in enumerate(current_repos):
-            cols = st.columns([5, 1])
+            cols = st.columns([5, 1, 1, 1])
             with cols[0]:
                 st.code(repo)
             with cols[1]:
+                if st.button("Explorer", key=f"explorer_repo_{i}", help="Open this folder in File Explorer"):
+                    safe = repo.replace("'", "''")
+                    code, out = ps_inline(f"Start-Process explorer.exe -ArgumentList '{safe}'", timeout=10)
+                    if code != 0:
+                        st.error(f"Could not open Explorer: {out}")
+            with cols[2]:
+                if st.button("VS Code", key=f"code_repo_{i}", help="Open this repo in VS Code"):
+                    code, out = run_cmd(["code", repo], timeout=15)
+                    if code != 0:
+                        st.error("VS Code launch failed. Make sure 'code' is on PATH.")
+            with cols[3]:
                 if st.button("Remove", key=f"del_repo_{i}"):
                     current_repos.pop(i)
                     write_allowlist(current_repos)

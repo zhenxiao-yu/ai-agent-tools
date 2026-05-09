@@ -29,10 +29,7 @@ def normalize_settings(data: dict | None) -> dict:
         settings["defaultIntervalHours"] = DEFAULT_SETTINGS["defaultIntervalHours"]
 
     settings["safetyMode"] = bool(settings.get("safetyMode", True))
-    settings["advancedMode"] = bool(settings.get("advancedMode", False))
     settings["autoRouting"] = bool(settings.get("autoRouting", True))
-    settings["compactView"] = bool(settings.get("compactView", False))
-    settings["theme"] = settings.get("theme") if settings.get("theme") in {"dark"} else DEFAULT_SETTINGS["theme"]
     return settings
 
 

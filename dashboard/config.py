@@ -31,10 +31,7 @@ DEFAULT_SETTINGS = {
     "defaultBaseBranch": "main",
     "defaultIntervalHours": 2,
     "safetyMode": True,
-    "advancedMode": False,
     "autoRouting": True,
-    "theme": "dark",
-    "compactView": False,
 }
 
 # ============================================
