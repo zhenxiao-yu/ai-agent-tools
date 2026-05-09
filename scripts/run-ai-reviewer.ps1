@@ -63,7 +63,12 @@ $Status
         return
     }
 
-    $Prompt = @"
+    $PromptFile = Join-Path $Root "team\prompts\05-reviewer.md"
+    if (Test-Path -LiteralPath $PromptFile) {
+        $RoleInstructions = (Get-Content -Raw -Path $PromptFile).TrimEnd()
+    }
+    else {
+        $RoleInstructions = @"
 You are the Senior Code Reviewer AI.
 
 Do not edit files.
@@ -77,6 +82,11 @@ Return:
 - files changed
 - validation status
 - suggested commit message
+"@
+    }
+
+    $Prompt = @"
+$RoleInstructions
 
 Reject or request changes if risky files were touched, scope is too large, validation failed without explanation, or the diff does not solve a small useful task.
 
