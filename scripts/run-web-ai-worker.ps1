@@ -441,6 +441,24 @@ Additional run instructions:
         $riskyChanged | ForEach-Object { Write-Log "  - $_" }
     }
 
+    # Auto-discard the branch if the worker produced no diff at all. Saves
+    # the user from running cleanup-ai-branches.ps1 against every empty run.
+    $changedAfter = (git diff --name-only | Out-String).Trim()
+    $stagedAfter = (git diff --cached --name-only | Out-String).Trim()
+    $branchEmpty = -not ($changedAfter -or $stagedAfter)
+
+    if ($branchEmpty) {
+        Write-Log ""
+        Write-Log "Worker produced no diff. Auto-discarding branch $BranchName."
+        Invoke-LoggedNative -FilePath "git" -ArgumentList @("checkout", $BaseBranch) | Out-Null
+        Invoke-LoggedNative -FilePath "git" -ArgumentList @("branch", "-D", $BranchName) | Out-Null
+        Write-RunReport -Title "Web AI Worker Report" -Status "no-op-branch-discarded" -Branch $BaseBranch -Notes ($notes + [Environment]::NewLine + "No diff was produced; the AI branch was auto-deleted.")
+        Write-Host "Branch: (auto-discarded; back on $BaseBranch)"
+        Write-Host "Log: $LogPath"
+        Write-Host "Report: $ReportPath"
+        exit 0
+    }
+
     Write-RunReport -Title "Web AI Worker Report" -Status "completed-review-required" -Branch $BranchName -Notes $notes
 
     Write-Host "Branch: $BranchName"

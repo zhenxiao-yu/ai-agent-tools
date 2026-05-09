@@ -13,6 +13,7 @@ from dashboard import jobs as jobs_mod
 from dashboard.cache import invalidate_cache
 from dashboard.config import LOGS
 from dashboard.data.allowlist import read_allowlist
+from dashboard.data.repo_input import parse as parse_repo_input
 from dashboard.data.routing import recommend_execution_plan
 from dashboard.data.settings import load_settings
 from dashboard.services import (
@@ -65,93 +66,168 @@ def render():
         get_service_status(force_refresh=True)
         st.rerun()
 
-    # Run worker / reviewer on a configured repo
+    # Quick Start: any path or URL
     repos = read_allowlist()
     settings_data = load_settings()
-    st.markdown("### Run on a Project")
-    if not repos:
-        st.info("Add a repo on the Settings page to enable Run Worker, Dry Run, and Run Reviewer here.")
-    else:
-        run_cols = st.columns([3, 2])
-        with run_cols[0]:
-            target_repo = st.selectbox(
-                "Repository",
-                repos,
-                key="home_run_repo",
-                help="Choose any repository in your allowlist.",
+    st.markdown("### Quick Start")
+    st.caption("Paste a local path or a GitHub URL. URLs are cloned to workspaces/ on the first run.")
+
+    if "home_quick_target" not in st.session_state:
+        st.session_state["home_quick_target"] = ""
+
+    quick_cols = st.columns([4, 2])
+    with quick_cols[0]:
+        target_input = st.text_input(
+            "Repo path or URL",
+            key="home_quick_target",
+            placeholder=r"C:\path\to\repo  or  https://github.com/owner/name",
+            label_visibility="collapsed",
+        )
+    with quick_cols[1]:
+        base_branch = st.text_input(
+            "Base branch",
+            value=settings_data.get("defaultBaseBranch", "main"),
+            key="home_run_branch",
+            help="The worker branches off this. Falls back to master if missing on a remote clone.",
+        )
+
+    # Saved repos -> one-click pre-fill of the input above.
+    if repos:
+        saved_cols = st.columns([1] + [3] * min(3, len(repos)))
+        with saved_cols[0]:
+            st.caption("Saved:")
+        for idx, repo_path in enumerate(repos[:3]):
+            with saved_cols[idx + 1]:
+                if st.button(
+                    Path(repo_path).name or repo_path,
+                    key=f"saved_pick_{idx}",
+                    help=repo_path,
+                    use_container_width=True,
+                ):
+                    st.session_state["home_quick_target"] = repo_path
+                    st.rerun()
+
+    parsed = parse_repo_input(target_input) if target_input else None
+    target_ready = bool(parsed) and not parsed.error
+    target_local_path = parsed.local_path if parsed else ""
+
+    if parsed:
+        if parsed.error:
+            st.error(parsed.error)
+        elif parsed.kind == "remote":
+            if parsed.needs_clone:
+                st.info(f"Will clone `{parsed.remote_url}` to `{parsed.local_path}` on first run.")
+            else:
+                st.success(f"Workspace already cloned: `{parsed.local_path}`. Updates pulled on each magic run.")
+        else:
+            st.success(f"Local repo: `{parsed.local_path}`")
+
+    # Action buttons
+    action_label_suffix = ""
+    if parsed and target_ready:
+        action_label_suffix = Path(target_local_path).name
+
+    button_disabled = not target_ready
+
+    magic_cols = st.columns([2, 1, 1, 1, 1])
+    with magic_cols[0]:
+        if st.button(
+            "Magic Run",
+            use_container_width=True,
+            disabled=button_disabled,
+            type="primary",
+            help="Clone if needed → init agents → dry-run → worker → reviewer → branch cleanup.",
+        ):
+            magic_args = ["-Target", parsed.raw, "-BaseBranch", base_branch]
+            if parsed.kind == "remote":
+                magic_args += ["-RemoteUrl", parsed.remote_url]
+            _submit(
+                kind="magic",
+                label=f"Magic · {action_label_suffix}",
+                script="magic-run.ps1",
+                args=magic_args,
+                repo=target_local_path,
             )
-        with run_cols[1]:
-            base_branch = st.text_input(
-                "Base branch",
-                value=settings_data.get("defaultBaseBranch", "main"),
-                key="home_run_branch",
-                help="Worker will branch off this and refuse a dirty repo.",
+    with magic_cols[1]:
+        if st.button(
+            "Dry Run",
+            use_container_width=True,
+            disabled=button_disabled or (parsed and parsed.kind == "remote" and parsed.needs_clone),
+            help="Verify env only. Disabled until the workspace exists locally — use Magic Run to clone first.",
+        ):
+            _submit(
+                kind="dry-run",
+                label=f"Dry Run · {action_label_suffix}",
+                script="run-web-ai-worker.ps1",
+                args=["-RepoPath", target_local_path, "-BaseBranch", base_branch, "-DryRun"],
+                repo=target_local_path,
+            )
+    with magic_cols[2]:
+        if st.button(
+            "Worker",
+            use_container_width=True,
+            disabled=button_disabled or (parsed and parsed.kind == "remote" and parsed.needs_clone),
+            help="One-task worker pass. No commits, no pushes.",
+        ):
+            _submit(
+                kind="worker",
+                label=f"Worker · {action_label_suffix}",
+                script="run-web-ai-worker.ps1",
+                args=["-RepoPath", target_local_path, "-BaseBranch", base_branch],
+                repo=target_local_path,
+            )
+    with magic_cols[3]:
+        if st.button(
+            "Reviewer",
+            use_container_width=True,
+            disabled=button_disabled or (parsed and parsed.kind == "remote" and parsed.needs_clone),
+            help="Local model reviews the current diff.",
+        ):
+            _submit(
+                kind="reviewer",
+                label=f"Reviewer · {action_label_suffix}",
+                script="run-ai-reviewer.ps1",
+                args=["-RepoPath", target_local_path],
+                repo=target_local_path,
+            )
+    with magic_cols[4]:
+        if st.button(
+            "Cleanup",
+            use_container_width=True,
+            disabled=button_disabled or (parsed and parsed.kind == "remote" and parsed.needs_clone),
+            help="Delete empty / merged / stale ai/web-auto-* branches.",
+        ):
+            _submit(
+                kind="cleanup",
+                label=f"Cleanup · {action_label_suffix}",
+                script="cleanup-ai-branches.ps1",
+                args=["-RepoPath", target_local_path, "-BaseBranch", base_branch],
+                repo=target_local_path,
             )
 
-        worker_cmd = (
-            f'powershell -ExecutionPolicy Bypass -File scripts\\run-web-ai-worker.ps1 '
-            f'-RepoPath "{target_repo}" -BaseBranch "{base_branch}"'
-        )
-        reviewer_cmd = (
-            f'powershell -ExecutionPolicy Bypass -File scripts\\run-ai-reviewer.ps1 '
-            f'-RepoPath "{target_repo}"'
-        )
-        with st.expander("Show exact commands", expanded=False):
-            st.caption("These are the commands the buttons below will run.")
-            st.code(worker_cmd + " -DryRun", language="powershell")
-            st.code(worker_cmd, language="powershell")
-            st.code(reviewer_cmd, language="powershell")
+    if target_ready:
+        with st.expander("Show exact commands"):
+            magic_remote = f' -RemoteUrl "{parsed.remote_url}"' if parsed.kind == "remote" else ""
+            st.code(
+                f'powershell -ExecutionPolicy Bypass -File scripts\\magic-run.ps1 '
+                f'-Target "{parsed.raw}" -BaseBranch "{base_branch}"{magic_remote}',
+                language="powershell",
+            )
+            st.code(
+                f'powershell -ExecutionPolicy Bypass -File scripts\\run-web-ai-worker.ps1 '
+                f'-RepoPath "{target_local_path}" -BaseBranch "{base_branch}"',
+                language="powershell",
+            )
+            st.code(
+                f'powershell -ExecutionPolicy Bypass -File scripts\\cleanup-ai-branches.ps1 '
+                f'-RepoPath "{target_local_path}" -BaseBranch "{base_branch}"',
+                language="powershell",
+            )
 
-        action_cols = st.columns(4)
-        with action_cols[0]:
-            if st.button("Dry Run Worker", use_container_width=True, help="Verify env, no edits, no commits. Runs in the background."):
-                _submit(
-                    kind="dry-run",
-                    label=f"Dry Run · {Path(target_repo).name}",
-                    script="run-web-ai-worker.ps1",
-                    args=["-RepoPath", target_repo, "-BaseBranch", base_branch, "-DryRun"],
-                    repo=target_repo,
-                )
-        with action_cols[1]:
-            if st.button(
-                "Run Worker",
-                use_container_width=True,
-                help="One-task local worker on a fresh ai/web-auto-* branch. No commits, no pushes.",
-            ):
-                _submit(
-                    kind="worker",
-                    label=f"Worker · {Path(target_repo).name}",
-                    script="run-web-ai-worker.ps1",
-                    args=["-RepoPath", target_repo, "-BaseBranch", base_branch],
-                    repo=target_repo,
-                )
-        with action_cols[2]:
-            if st.button(
-                "Run Reviewer",
-                use_container_width=True,
-                help="Have the local model review the current diff in the chosen repo.",
-            ):
-                _submit(
-                    kind="reviewer",
-                    label=f"Reviewer · {Path(target_repo).name}",
-                    script="run-ai-reviewer.ps1",
-                    args=["-RepoPath", target_repo],
-                    repo=target_repo,
-                )
-        with action_cols[3]:
-            if st.button(
-                "Run Pipeline",
-                use_container_width=True,
-                help="Run the full PM → Tech Lead → QA → Reviewer → DevOps advisory chain. No edits.",
-            ):
-                _submit(
-                    kind="pipeline",
-                    label=f"Pipeline · {Path(target_repo).name}",
-                    script="run-agent-pipeline.ps1",
-                    args=["-RepoPath", target_repo],
-                    repo=target_repo,
-                )
-        st.caption("Submitted jobs run in the background. Track them on the Runs page; final reports land on Reports.")
+    st.caption(
+        "Magic Run does it all. Workers auto-discard branches that produce no diff; "
+        "Cleanup sweeps the rest. Track progress on the Runs page."
+    )
 
     # Service Status
     status = get_service_status_snapshot(include_model_details=False)
