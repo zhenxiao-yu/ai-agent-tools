@@ -24,13 +24,25 @@ from dashboard.ui.components import error_boundary, info_panel, status_rows
 from dashboard.utils import log_event
 
 # Import page modules
-from dashboard.pages import home, providers, models, settings, automation
+from dashboard.pages import (
+    automation,
+    home,
+    models,
+    providers,
+    reports,
+    runs,
+    scheduler,
+    settings,
+)
 
 
 # Page registry
 PAGES = {
     "Home": home,
     "Automation": automation,
+    "Runs": runs,
+    "Reports": reports,
+    "Scheduler": scheduler,
     "Providers": providers,
     "Models": models,
     "Settings": settings,
